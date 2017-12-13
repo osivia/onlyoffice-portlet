@@ -19,10 +19,10 @@ public class EditorConfig {
     private String mode;
 
     @XmlElement
-    private boolean chat;
+    private OnlyOfficeUser user;
 
     @XmlElement
-    private OnlyOfficeUser user;
+    private EditorConfigCustomization customization;
 
     /**
      * @return the callbackUrl
@@ -105,18 +105,18 @@ public class EditorConfig {
 
 
     /**
-     * @return the chat
+     * @return the customization
      */
-    public boolean isChat() {
-        return chat;
+    public EditorConfigCustomization getCustomization() {
+        return customization;
     }
 
 
     /**
-     * @param chat the chat to set
+     * @param customization the customization to set
      */
-    public void setChat(boolean chat) {
-        this.chat = chat;
+    public void setCustomization(EditorConfigCustomization customization) {
+        this.customization = customization;
     }
 
 }

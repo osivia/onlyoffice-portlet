@@ -10,10 +10,14 @@ import org.nuxeo.ecm.automation.client.model.Document;
 import org.nuxeo.ecm.automation.client.model.PropertyMap;
 import org.osivia.portal.api.Constants;
 import org.osivia.portal.api.cms.impl.BasicPermissions;
+import org.osivia.portal.api.directory.v2.DirServiceFactory;
+import org.osivia.portal.api.directory.v2.model.Person;
+import org.osivia.portal.api.directory.v2.service.PersonService;
 import org.osivia.portal.api.windows.PortalWindow;
 import org.osivia.portal.api.windows.WindowFactory;
 import org.osivia.services.onlyoffice.portlet.command.GetUserJWTTokenCommand;
 import org.osivia.services.onlyoffice.portlet.model.EditorConfig;
+import org.osivia.services.onlyoffice.portlet.model.EditorConfigCustomization;
 import org.osivia.services.onlyoffice.portlet.model.OnlyOfficeDocument;
 import org.osivia.services.onlyoffice.portlet.model.OnlyOfficeUser;
 import org.osivia.services.onlyoffice.portlet.model.OnlyofficeConfig;
@@ -27,7 +31,17 @@ import net.sf.json.JSONObject;
 @Service
 public class OnlyofficeImpl implements IOnlyofficeService {
 
-    private static final String WEBSERVICE_CALLBACKEDIT_PATH = "/nuxeo/site/onlyoffice/callbackEdit/";
+    private static final String WEBSERVICE_CALLBACKEDIT_PATH = "/site/onlyoffice/callbackEdit/";
+
+    private static final String ONLYOFFICE_TOKEN_ID = System.getProperty("osivia.onlyoffice.token.id", "onlyoffice");
+
+    private static final String ONLYOFFICE_NUXEO_URL = System.getProperty("osivia.onlyoffice.nuxeo.url", StringUtils.EMPTY);
+
+    private final PersonService personService;
+
+    public OnlyofficeImpl() {
+        personService = DirServiceFactory.getService(PersonService.class);
+    }
 
     private String getWindowProperty(PortletRequest request, String property) {
         PortalWindow window = WindowFactory.getWindow(request);
@@ -87,9 +101,17 @@ public class OnlyofficeImpl implements IOnlyofficeService {
 
         NuxeoController nuxeoController = new NuxeoController(portletRequest, portletResponse, portletContext);
 
-        String userToken = (String) nuxeoController.executeNuxeoCommand(new GetUserJWTTokenCommand("onlyoffice"));
+        String userToken = (String) nuxeoController.executeNuxeoCommand(new GetUserJWTTokenCommand(ONLYOFFICE_TOKEN_ID));
 
-        docUrl = docUrl + "?token=" + userToken;
+        if (StringUtils.contains(docUrl, "/nxbigfile/")) {
+            int indexOf = StringUtils.indexOf(docUrl, "/nxbigfile/");
+            docUrl = ONLYOFFICE_NUXEO_URL + StringUtils.substring(docUrl, indexOf) + "?token=" + userToken;
+        } else if (StringUtils.contains(docUrl, "/nxfile/")) {
+            int indexOf = StringUtils.indexOf(docUrl, "/nxfile/");
+            docUrl = ONLYOFFICE_NUXEO_URL + StringUtils.substring(docUrl, indexOf) + "?token=" + userToken;
+        } else {
+            docUrl = StringUtils.EMPTY;
+        }
 
         return docUrl;
     }
@@ -117,9 +139,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         Document currentDoc = getCurrentDoc(portletRequest, portletResponse, portletContext);
         String currentDocId = currentDoc.getId();
 
-        String onlyofficePrivateUrl = "http://vm-dli-foad";
-
-        return onlyofficePrivateUrl + WEBSERVICE_CALLBACKEDIT_PATH + currentDocId;
+        return ONLYOFFICE_NUXEO_URL + WEBSERVICE_CALLBACKEDIT_PATH + currentDocId;
     }
 
     @Override
@@ -137,11 +157,11 @@ public class OnlyofficeImpl implements IOnlyofficeService {
 
         EditorConfig onlyOfficeEditorConfig = new EditorConfig();
         onlyOfficeEditorConfig.setCallbackUrl(getCallbackUrl(portletRequest, portletResponse, portletContext));
-        OnlyOfficeUser user = new OnlyOfficeUser();
-        user.setId(portletRequest.getUserPrincipal().getName());
-        onlyOfficeEditorConfig.setUser(user);
+        onlyOfficeEditorConfig.setUser(buildOnlyOfficeUser(portletRequest.getUserPrincipal().getName()));
         onlyOfficeEditorConfig.setMode(getMode(portletRequest, portletResponse, portletContext));
-        onlyOfficeEditorConfig.setChat(false);
+        EditorConfigCustomization editorConfigCustomization = new EditorConfigCustomization();
+        editorConfigCustomization.setChat(false);
+        onlyOfficeEditorConfig.setCustomization(editorConfigCustomization);
         onlyOfficeConfig.setEditorConfig(onlyOfficeEditorConfig);
 
         onlyOfficeConfig.setWidth("100%");
@@ -150,5 +170,17 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         JSONObject onlyOfficeConfigJson = JSONObject.fromObject(onlyOfficeConfig);
 
         return onlyOfficeConfigJson.toString();
+    }
+
+    private OnlyOfficeUser buildOnlyOfficeUser(String uid) {
+        OnlyOfficeUser user = new OnlyOfficeUser();
+        user.setId(uid);
+        Person person = personService.getPerson(uid);
+        if (person != null) {
+            user.setName(person.getDisplayName());
+        } else {
+            user.setName(uid);
+        }
+        return user;
     }
 }

@@ -7,6 +7,6 @@ import javax.portlet.PortletResponse;
 
 public interface IOnlyofficeService {
 
-    String getOnlyOfficeConfig(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext) throws PortletException;
+    public String getOnlyOfficeConfig(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext) throws PortletException;
 
 }
