@@ -6,4 +6,6 @@
 <portlet:defineObjects />
 <script type="text/javascript" src="${apiUrl}"></script>
 
-<div id="onlyoffice-placeholder" data-onlyoffice-config='${onlyOfficeConfig}'></div>
+<div class="portlet-filler flexbox">
+	<div id="onlyoffice-placeholder" data-onlyoffice-config='${onlyOfficeConfig}' class="flexbox"></div>
+</div>

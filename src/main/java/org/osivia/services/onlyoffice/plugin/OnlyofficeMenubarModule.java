@@ -21,6 +21,7 @@ import org.osivia.portal.api.menubar.IMenubarService;
 import org.osivia.portal.api.menubar.MenubarDropdown;
 import org.osivia.portal.api.menubar.MenubarItem;
 import org.osivia.portal.api.menubar.MenubarModule;
+import org.osivia.portal.core.constants.InternalConstants;
 import org.osivia.services.onlyoffice.portlet.model.FileUtility;
 
 import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
@@ -86,6 +87,8 @@ public class OnlyofficeMenubarModule implements MenubarModule {
                         // build onlyoffice portlet url
                         Map<String, String> windowProperties = new HashMap<>();
                         windowProperties.put(Constants.WINDOW_PROP_URI, documentPath);
+                        windowProperties.put("osivia.hideTitle", "1");
+                        windowProperties.put(InternalConstants.PROP_WINDOW_TITLE, bundle.getString("LIVE_EDIT"));
 
                         String url = nuxeoController.getPortalUrlFactory().getStartPortletUrl(portalControllerContext, ONLYOFFICE_PORTLET_INSTANCE,
                                 windowProperties);

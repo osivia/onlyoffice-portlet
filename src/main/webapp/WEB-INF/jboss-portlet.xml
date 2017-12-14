@@ -12,6 +12,7 @@
         
         <header-content>
             <script type="text/javascript" src="/js/onlyoffice-integration.js"></script>
+            <link rel="stylesheet" href="/css/onlyoffice-integration.css" />
         </header-content>
         
         <portlet-info>

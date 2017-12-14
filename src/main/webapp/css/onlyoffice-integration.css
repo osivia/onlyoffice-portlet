@@ -1,0 +1,11 @@
+iframe[name="frameEditor"]{
+	flex : 1;
+}
+
+#maximized {
+	padding : 0 !important;
+}
+
+#maximized > .hidden-xs {
+	display: none;
+}

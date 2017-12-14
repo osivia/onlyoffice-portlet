@@ -164,8 +164,8 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         onlyOfficeEditorConfig.setCustomization(editorConfigCustomization);
         onlyOfficeConfig.setEditorConfig(onlyOfficeEditorConfig);
 
-        onlyOfficeConfig.setWidth("100%");
-        onlyOfficeConfig.setHeight("800");
+        // onlyOfficeConfig.setWidth("100%");
+        // onlyOfficeConfig.setHeight("800");
 
         JSONObject onlyOfficeConfigJson = JSONObject.fromObject(onlyOfficeConfig);
 
