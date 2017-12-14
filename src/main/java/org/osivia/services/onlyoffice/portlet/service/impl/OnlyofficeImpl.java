@@ -18,6 +18,7 @@ import org.osivia.portal.api.windows.WindowFactory;
 import org.osivia.services.onlyoffice.portlet.command.GetUserJWTTokenCommand;
 import org.osivia.services.onlyoffice.portlet.model.EditorConfig;
 import org.osivia.services.onlyoffice.portlet.model.EditorConfigCustomization;
+import org.osivia.services.onlyoffice.portlet.model.FileUtility;
 import org.osivia.services.onlyoffice.portlet.model.OnlyOfficeDocument;
 import org.osivia.services.onlyoffice.portlet.model.OnlyOfficeUser;
 import org.osivia.services.onlyoffice.portlet.model.OnlyofficeConfig;
@@ -96,11 +97,8 @@ public class OnlyofficeImpl implements IOnlyofficeService {
     private String getDocUrl(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext) throws PortletException {
 
         PropertyMap fileContent = getCurrentFileContent(portletRequest, portletResponse, portletContext);
-
         String docUrl = fileContent.getString("data");
-
         NuxeoController nuxeoController = new NuxeoController(portletRequest, portletResponse, portletContext);
-
         String userToken = (String) nuxeoController.executeNuxeoCommand(new GetUserJWTTokenCommand(ONLYOFFICE_TOKEN_ID));
 
         if (StringUtils.contains(docUrl, "/nxbigfile/")) {
@@ -112,7 +110,6 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         } else {
             docUrl = StringUtils.EMPTY;
         }
-
         return docUrl;
     }
 
@@ -135,11 +132,15 @@ public class OnlyofficeImpl implements IOnlyofficeService {
     }
 
     private String getCallbackUrl(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext) throws PortletException {
-
         Document currentDoc = getCurrentDoc(portletRequest, portletResponse, portletContext);
         String currentDocId = currentDoc.getId();
-
         return ONLYOFFICE_NUXEO_URL + WEBSERVICE_CALLBACKEDIT_PATH + currentDocId;
+    }
+
+    private String getDocumentType(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext) throws PortletException {
+        PropertyMap fileContent = getCurrentFileContent(portletRequest, portletResponse, portletContext);
+        String mimeType = fileContent.getString("mime-type");
+        return FileUtility.GetFileType(mimeType).name();
     }
 
     @Override
@@ -152,8 +153,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         onlyOfficeDocument.setTitle(getDocTitle(portletRequest, portletResponse, portletContext));
         onlyOfficeDocument.setUrl(getDocUrl(portletRequest, portletResponse, portletContext));
         onlyOfficeConfig.setDocument(onlyOfficeDocument);
-
-        onlyOfficeConfig.setDocumentType("text");
+        onlyOfficeConfig.setDocumentType(getDocumentType(portletRequest, portletResponse, portletContext));
 
         EditorConfig onlyOfficeEditorConfig = new EditorConfig();
         onlyOfficeEditorConfig.setCallbackUrl(getCallbackUrl(portletRequest, portletResponse, portletContext));

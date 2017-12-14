@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 import org.nuxeo.ecm.automation.client.model.Document;
+import org.nuxeo.ecm.automation.client.model.PropertyMap;
 import org.osivia.portal.api.Constants;
 import org.osivia.portal.api.PortalException;
 import org.osivia.portal.api.cms.DocumentContext;
@@ -20,6 +21,7 @@ import org.osivia.portal.api.menubar.IMenubarService;
 import org.osivia.portal.api.menubar.MenubarDropdown;
 import org.osivia.portal.api.menubar.MenubarItem;
 import org.osivia.portal.api.menubar.MenubarModule;
+import org.osivia.services.onlyoffice.portlet.model.FileUtility;
 
 import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
 
@@ -65,30 +67,33 @@ public class OnlyofficeMenubarModule implements MenubarModule {
             String type = nuxeoDocument.getType();
             String documentPath = nuxeoDocument.getPath();
 
-            if (StringUtils.isNotBlank(type) && StringUtils.isNotBlank(documentPath)) {
+            PropertyMap properties = nuxeoDocument.getProperties();
+            PropertyMap fileContent = properties.getMap("file:content");
+            if (StringUtils.isNotBlank(type) && StringUtils.isNotBlank(documentPath) && fileContent != null) {
 
-                // build onlyoffice menuitem
-                NuxeoController nuxeoController = new NuxeoController(portalControllerContext);
+                String mimeType = fileContent.getString("mime-type");
 
-                Bundle bundle = bundleFactory.getBundle(portalControllerContext.getRequest().getLocale());
-                final MenubarDropdown parent = menubarService.getDropdown(portalControllerContext, MenubarDropdown.CMS_EDITION_DROPDOWN_MENU_ID);
-                MenubarItem item;
-                if (nuxeoDocument.isLocked()) {
-                    item = new MenubarItem("LIVE_EDIT", bundle.getString("LIVE_EDIT"), "halflings halflings-pencil", parent, 0, "#", null, null,
-                            null);
-                    item.isDisabled();
-                } else {
-                    // build onlyoffice portlet url
-                    Map<String, String> windowProperties = new HashMap<>();
-                    windowProperties.put(Constants.WINDOW_PROP_URI, documentPath);
+                if (FileUtility.isMimeTypeSupported(mimeType)) {
+                    // build onlyoffice menuitem
+                    NuxeoController nuxeoController = new NuxeoController(portalControllerContext);
+                    Bundle bundle = bundleFactory.getBundle(portalControllerContext.getRequest().getLocale());
+                    final MenubarDropdown parent = menubarService.getDropdown(portalControllerContext, MenubarDropdown.CMS_EDITION_DROPDOWN_MENU_ID);
+                    MenubarItem item;
+                    if (nuxeoDocument.isLocked()) {
+                        item = new MenubarItem("LIVE_EDIT", bundle.getString("LIVE_EDIT"), "halflings halflings-pencil", parent, 0, "#", null, null, null);
+                        item.isDisabled();
+                    } else {
+                        // build onlyoffice portlet url
+                        Map<String, String> windowProperties = new HashMap<>();
+                        windowProperties.put(Constants.WINDOW_PROP_URI, documentPath);
 
-                    String url = nuxeoController.getPortalUrlFactory().getStartPortletUrl(portalControllerContext, ONLYOFFICE_PORTLET_INSTANCE,
-                            windowProperties);
+                        String url = nuxeoController.getPortalUrlFactory().getStartPortletUrl(portalControllerContext, ONLYOFFICE_PORTLET_INSTANCE,
+                                windowProperties);
 
-                    item = new MenubarItem("LIVE_EDIT", bundle.getString("LIVE_EDIT"), "halflings halflings-pencil", parent, 0, url, null, null,
-                            null);
+                        item = new MenubarItem("LIVE_EDIT", bundle.getString("LIVE_EDIT"), "halflings halflings-pencil", parent, 0, url, null, null, null);
+                    }
+                    menubar.add(item);
                 }
-                menubar.add(item);
             }
         }
     }
