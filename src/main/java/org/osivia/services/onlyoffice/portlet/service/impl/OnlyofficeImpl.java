@@ -1,5 +1,7 @@
 package org.osivia.services.onlyoffice.portlet.service.impl;
 
+import java.util.Locale;
+
 import javax.portlet.PortletContext;
 import javax.portlet.PortletException;
 import javax.portlet.PortletRequest;
@@ -37,6 +39,8 @@ public class OnlyofficeImpl implements IOnlyofficeService {
     private static final String ONLYOFFICE_TOKEN_ID = System.getProperty("osivia.onlyoffice.token.id", "onlyoffice");
 
     private static final String ONLYOFFICE_NUXEO_URL = System.getProperty("osivia.onlyoffice.nuxeo.url", StringUtils.EMPTY);
+
+    private static final String ONLYOFFICE_LANG = System.getProperty("osivia.onlyoffice.lang", "fr-FR");
 
     private final PersonService personService;
 
@@ -159,17 +163,19 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         onlyOfficeEditorConfig.setCallbackUrl(getCallbackUrl(portletRequest, portletResponse, portletContext));
         onlyOfficeEditorConfig.setUser(buildOnlyOfficeUser(portletRequest.getUserPrincipal().getName()));
         onlyOfficeEditorConfig.setMode(getMode(portletRequest, portletResponse, portletContext));
+        onlyOfficeEditorConfig.setLang(getLang(portletRequest.getLocale()));
         EditorConfigCustomization editorConfigCustomization = new EditorConfigCustomization();
-        editorConfigCustomization.setChat(false);
+        editorConfigCustomization.setChat(true);
         onlyOfficeEditorConfig.setCustomization(editorConfigCustomization);
         onlyOfficeConfig.setEditorConfig(onlyOfficeEditorConfig);
-
-        // onlyOfficeConfig.setWidth("100%");
-        // onlyOfficeConfig.setHeight("800");
 
         JSONObject onlyOfficeConfigJson = JSONObject.fromObject(onlyOfficeConfig);
 
         return onlyOfficeConfigJson.toString();
+    }
+
+    private String getLang(Locale locale) {
+        return ONLYOFFICE_LANG;
     }
 
     private OnlyOfficeUser buildOnlyOfficeUser(String uid) {

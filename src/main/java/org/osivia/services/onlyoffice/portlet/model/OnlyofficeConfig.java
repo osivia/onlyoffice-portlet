@@ -24,6 +24,9 @@ public class OnlyofficeConfig {
     @XmlElement
     private String height;
 
+    @XmlElement
+    private String type;
+
 
     /**
      * @return the document
@@ -102,6 +105,26 @@ public class OnlyofficeConfig {
      */
     public void setHeight(String height) {
         this.height = height;
+    }
+
+
+    /**
+     * Getter for type.
+     * 
+     * @return the type
+     */
+    public String getType() {
+        return type;
+    }
+
+
+    /**
+     * Setter for type.
+     * 
+     * @param type the type to set
+     */
+    public void setType(String type) {
+        this.type = type;
     }
 
 }
