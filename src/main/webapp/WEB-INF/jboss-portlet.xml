@@ -15,12 +15,6 @@
             <link rel="stylesheet" href="/css/onlyoffice-integration.css" />
         </header-content>
         
-        <portlet-info>
-            <icon>
-                <small-icon>/img/portlet_icon.png</small-icon>
-                <large-icon>/img/portlet_icon.png</large-icon>
-            </icon>
-        </portlet-info>
     </portlet>
 
     <portlet>
