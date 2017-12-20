@@ -1,13 +1,10 @@
 package org.osivia.services.onlyoffice.plugin;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 import org.nuxeo.ecm.automation.client.model.Document;
 import org.nuxeo.ecm.automation.client.model.PropertyMap;
-import org.osivia.portal.api.Constants;
 import org.osivia.portal.api.PortalException;
 import org.osivia.portal.api.cms.DocumentContext;
 import org.osivia.portal.api.cms.EcmDocument;
@@ -21,10 +18,9 @@ import org.osivia.portal.api.menubar.IMenubarService;
 import org.osivia.portal.api.menubar.MenubarDropdown;
 import org.osivia.portal.api.menubar.MenubarItem;
 import org.osivia.portal.api.menubar.MenubarModule;
-import org.osivia.portal.core.constants.InternalConstants;
-import org.osivia.services.onlyoffice.portlet.model.FileUtility;
 
 import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
+import fr.toutatice.portail.cms.nuxeo.api.liveedit.OnlyofficeLiveEditHelper;
 
 /**
  * OnlyofficeMenubarModule
@@ -32,8 +28,6 @@ import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
  * @author dorian
  */
 public class OnlyofficeMenubarModule implements MenubarModule {
-
-    private static final String ONLYOFFICE_PORTLET_INSTANCE = "osivia-services-onlyoffice-portletInstance";
 
     /** Menubar service. */
     private final IMenubarService menubarService;
@@ -74,7 +68,7 @@ public class OnlyofficeMenubarModule implements MenubarModule {
 
                 String mimeType = fileContent.getString("mime-type");
 
-                if (FileUtility.isMimeTypeSupported(mimeType)) {
+                if (OnlyofficeLiveEditHelper.isMimeTypeSupported(mimeType)) {
                     // build onlyoffice menuitem
                     NuxeoController nuxeoController = new NuxeoController(portalControllerContext);
                     Bundle bundle = bundleFactory.getBundle(portalControllerContext.getRequest().getLocale());
@@ -84,14 +78,7 @@ public class OnlyofficeMenubarModule implements MenubarModule {
                         item = new MenubarItem("LIVE_EDIT", bundle.getString("LIVE_EDIT"), "halflings halflings-pencil", parent, 0, "#", null, null, null);
                         item.isDisabled();
                     } else {
-                        // build onlyoffice portlet url
-                        Map<String, String> windowProperties = new HashMap<>();
-                        windowProperties.put(Constants.WINDOW_PROP_URI, documentPath);
-                        windowProperties.put("osivia.hideTitle", "1");
-                        windowProperties.put(InternalConstants.PROP_WINDOW_TITLE, bundle.getString("LIVE_EDIT"));
-
-                        String url = nuxeoController.getPortalUrlFactory().getStartPortletUrl(portalControllerContext, ONLYOFFICE_PORTLET_INSTANCE,
-                                windowProperties);
+                        String url = OnlyofficeLiveEditHelper.getStartOnlyofficePortlerUrl(bundle, documentPath, nuxeoController);
 
                         item = new MenubarItem("LIVE_EDIT", bundle.getString("LIVE_EDIT"), "halflings halflings-pencil", parent, 0, url, null, null, null);
                     }

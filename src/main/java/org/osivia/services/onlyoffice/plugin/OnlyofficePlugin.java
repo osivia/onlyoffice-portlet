@@ -6,6 +6,7 @@ import org.osivia.portal.api.customization.CustomizationContext;
 import org.osivia.portal.api.menubar.MenubarModule;
 
 import fr.toutatice.portail.cms.nuxeo.api.domain.AbstractPluginPortlet;
+import fr.toutatice.portail.cms.nuxeo.api.liveedit.OnlyofficeLiveEditHelper;
 
 /**
  * OnlyofficePlugin
@@ -15,9 +16,6 @@ import fr.toutatice.portail.cms.nuxeo.api.domain.AbstractPluginPortlet;
  */
 public class OnlyofficePlugin extends AbstractPluginPortlet {
 
-    /** Plugin name. */
-    private static final String PLUGIN_NAME = "onlyoffice.plugin";
-
     @Override
     protected void customizeCMSProperties(String customizationId, CustomizationContext context) {
         customizeMenubarModules(context);
@@ -25,7 +23,7 @@ public class OnlyofficePlugin extends AbstractPluginPortlet {
 
     @Override
     protected String getPluginName() {
-        return PLUGIN_NAME;
+        return OnlyofficeLiveEditHelper.ONLYOFFICE_PLUGIN_NAME;
     }
 
     private void customizeMenubarModules(CustomizationContext context) {

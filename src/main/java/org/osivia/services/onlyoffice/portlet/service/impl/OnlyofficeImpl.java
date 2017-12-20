@@ -20,7 +20,6 @@ import org.osivia.portal.api.windows.WindowFactory;
 import org.osivia.services.onlyoffice.portlet.command.GetUserJWTTokenCommand;
 import org.osivia.services.onlyoffice.portlet.model.EditorConfig;
 import org.osivia.services.onlyoffice.portlet.model.EditorConfigCustomization;
-import org.osivia.services.onlyoffice.portlet.model.FileUtility;
 import org.osivia.services.onlyoffice.portlet.model.OnlyOfficeDocument;
 import org.osivia.services.onlyoffice.portlet.model.OnlyOfficeUser;
 import org.osivia.services.onlyoffice.portlet.model.OnlyofficeConfig;
@@ -29,6 +28,7 @@ import org.springframework.stereotype.Service;
 
 import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
 import fr.toutatice.portail.cms.nuxeo.api.cms.NuxeoDocumentContext;
+import fr.toutatice.portail.cms.nuxeo.api.liveedit.OnlyofficeLiveEditHelper;
 import net.sf.json.JSONObject;
 
 @Service
@@ -144,7 +144,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
     private String getDocumentType(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext) throws PortletException {
         PropertyMap fileContent = getCurrentFileContent(portletRequest, portletResponse, portletContext);
         String mimeType = fileContent.getString("mime-type");
-        return FileUtility.GetFileType(mimeType).name();
+        return OnlyofficeLiveEditHelper.GetFileType(mimeType).name();
     }
 
     @Override
