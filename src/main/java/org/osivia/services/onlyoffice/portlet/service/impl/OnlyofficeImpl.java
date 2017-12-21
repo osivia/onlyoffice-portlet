@@ -15,11 +15,16 @@ import org.osivia.portal.api.cms.impl.BasicPermissions;
 import org.osivia.portal.api.directory.v2.DirServiceFactory;
 import org.osivia.portal.api.directory.v2.model.Person;
 import org.osivia.portal.api.directory.v2.service.PersonService;
+import org.osivia.portal.api.internationalization.Bundle;
+import org.osivia.portal.api.internationalization.IBundleFactory;
+import org.osivia.portal.api.internationalization.IInternationalizationService;
+import org.osivia.portal.api.locator.Locator;
 import org.osivia.portal.api.windows.PortalWindow;
 import org.osivia.portal.api.windows.WindowFactory;
 import org.osivia.services.onlyoffice.portlet.command.GetUserJWTTokenCommand;
 import org.osivia.services.onlyoffice.portlet.model.EditorConfig;
 import org.osivia.services.onlyoffice.portlet.model.EditorConfigCustomization;
+import org.osivia.services.onlyoffice.portlet.model.EditorConfigCustomizationGoback;
 import org.osivia.services.onlyoffice.portlet.model.OnlyOfficeDocument;
 import org.osivia.services.onlyoffice.portlet.model.OnlyOfficeUser;
 import org.osivia.services.onlyoffice.portlet.model.OnlyofficeConfig;
@@ -44,8 +49,16 @@ public class OnlyofficeImpl implements IOnlyofficeService {
 
     private final PersonService personService;
 
+    /** Internationalization bundle factory. */
+    private final IBundleFactory bundleFactory;
+
     public OnlyofficeImpl() {
         personService = DirServiceFactory.getService(PersonService.class);
+
+        // Internationalization bundle factory
+        IInternationalizationService internationalizationService = Locator.findMBean(IInternationalizationService.class,
+                IInternationalizationService.MBEAN_NAME);
+        bundleFactory = internationalizationService.getBundleFactory(this.getClass().getClassLoader());
     }
 
     private String getWindowProperty(PortletRequest request, String property) {
@@ -147,6 +160,15 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         return OnlyofficeLiveEditHelper.GetFileType(mimeType).name();
     }
 
+    private EditorConfigCustomizationGoback getGoback(Bundle bundle, PortletRequest portletRequest, PortletResponse portletResponse,
+            PortletContext portletContext) {
+        EditorConfigCustomizationGoback goback = new EditorConfigCustomizationGoback();
+        goback.setText(bundle.getString("BACK_TEXT"));
+        NuxeoController nuxeoController = new NuxeoController(portletRequest, portletResponse, portletContext);
+        goback.setUrl(nuxeoController.getPortalUrlFactory().getBackURL(nuxeoController.getPortalCtx(), false));
+        return goback;
+    }
+
     @Override
     public String getOnlyOfficeConfig(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext) throws PortletException {
 
@@ -166,6 +188,8 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         onlyOfficeEditorConfig.setLang(getLang(portletRequest.getLocale()));
         EditorConfigCustomization editorConfigCustomization = new EditorConfigCustomization();
         editorConfigCustomization.setChat(true);
+        Bundle bundle = bundleFactory.getBundle(portletRequest.getLocale());
+        editorConfigCustomization.setGoback(getGoback(bundle, portletRequest, portletResponse, portletContext));
         onlyOfficeEditorConfig.setCustomization(editorConfigCustomization);
         onlyOfficeConfig.setEditorConfig(onlyOfficeEditorConfig);
 
