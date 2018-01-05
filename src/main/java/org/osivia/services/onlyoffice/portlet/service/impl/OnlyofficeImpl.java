@@ -1,11 +1,14 @@
 package org.osivia.services.onlyoffice.portlet.service.impl;
 
+import java.security.Principal;
 import java.util.Locale;
 
 import javax.portlet.PortletContext;
 import javax.portlet.PortletException;
 import javax.portlet.PortletRequest;
 import javax.portlet.PortletResponse;
+
+import net.sf.json.JSONObject;
 
 import org.apache.commons.lang.StringUtils;
 import org.nuxeo.ecm.automation.client.model.Document;
@@ -34,12 +37,16 @@ import org.springframework.stereotype.Service;
 import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
 import fr.toutatice.portail.cms.nuxeo.api.cms.NuxeoDocumentContext;
 import fr.toutatice.portail.cms.nuxeo.api.liveedit.OnlyofficeLiveEditHelper;
-import net.sf.json.JSONObject;
 
 @Service
 public class OnlyofficeImpl implements IOnlyofficeService {
 
-    private static final String WEBSERVICE_CALLBACKEDIT_PATH = "/site/onlyoffice/callbackEdit/";
+
+	private static final String ANONYMOUS_NAME = "Utilisateur invité";
+
+	private static final String ANONYMOUS_LOGIN = "Anonymous";
+
+	private static final String WEBSERVICE_CALLBACKEDIT_PATH = "/site/onlyoffice/callbackEdit/";
 
     private static final String ONLYOFFICE_TOKEN_ID = System.getProperty("osivia.onlyoffice.token.id", "onlyoffice");
 
@@ -183,7 +190,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
 
         EditorConfig onlyOfficeEditorConfig = new EditorConfig();
         onlyOfficeEditorConfig.setCallbackUrl(getCallbackUrl(portletRequest, portletResponse, portletContext));
-        onlyOfficeEditorConfig.setUser(buildOnlyOfficeUser(portletRequest.getUserPrincipal().getName()));
+		onlyOfficeEditorConfig.setUser(buildOnlyOfficeUser(portletRequest.getUserPrincipal()));
         onlyOfficeEditorConfig.setMode(getMode(portletRequest, portletResponse, portletContext));
         onlyOfficeEditorConfig.setLang(getLang(portletRequest.getLocale()));
         EditorConfigCustomization editorConfigCustomization = new EditorConfigCustomization();
@@ -202,15 +209,28 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         return ONLYOFFICE_LANG;
     }
 
-    private OnlyOfficeUser buildOnlyOfficeUser(String uid) {
-        OnlyOfficeUser user = new OnlyOfficeUser();
-        user.setId(uid);
-        Person person = personService.getPerson(uid);
-        if (person != null) {
-            user.setName(person.getDisplayName());
-        } else {
-            user.setName(uid);
-        }
+    private OnlyOfficeUser buildOnlyOfficeUser(Principal userPrincipal) {
+    	
+    	OnlyOfficeUser user = new OnlyOfficeUser();
+    	String id = ANONYMOUS_LOGIN;
+    	// LBI #1732 gestion user anonyme
+    	if(userPrincipal != null) {
+    		id = userPrincipal.getName();
+    		
+            Person person = personService.getPerson(id);
+            if (person != null) {
+                user.setName(person.getDisplayName());
+            } else {
+                user.setName(id);
+            }
+    	}
+    	else {
+    		user.setName(ANONYMOUS_NAME);
+    	}
+    	
+    	user.setId(id);
+    	       
+
         return user;
     }
 }
