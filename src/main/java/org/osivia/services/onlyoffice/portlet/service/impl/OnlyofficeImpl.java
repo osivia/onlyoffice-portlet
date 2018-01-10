@@ -1,20 +1,26 @@
 package org.osivia.services.onlyoffice.portlet.service.impl;
 
 import java.security.Principal;
+import java.util.HashMap;
+import java.util.ListIterator;
 import java.util.Locale;
+import java.util.Map;
 
 import javax.portlet.PortletContext;
 import javax.portlet.PortletException;
 import javax.portlet.PortletRequest;
 import javax.portlet.PortletResponse;
 
+import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 
 import org.apache.commons.lang.StringUtils;
 import org.nuxeo.ecm.automation.client.model.Document;
 import org.nuxeo.ecm.automation.client.model.PropertyMap;
 import org.osivia.portal.api.Constants;
+import org.osivia.portal.api.PortalException;
 import org.osivia.portal.api.cms.impl.BasicPermissions;
+import org.osivia.portal.api.context.PortalControllerContext;
 import org.osivia.portal.api.directory.v2.DirServiceFactory;
 import org.osivia.portal.api.directory.v2.model.Person;
 import org.osivia.portal.api.directory.v2.service.PersonService;
@@ -34,6 +40,7 @@ import org.osivia.services.onlyoffice.portlet.model.OnlyofficeConfig;
 import org.osivia.services.onlyoffice.portlet.service.IOnlyofficeService;
 import org.springframework.stereotype.Service;
 
+import fr.toutatice.portail.cms.nuxeo.api.INuxeoCommand;
 import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
 import fr.toutatice.portail.cms.nuxeo.api.cms.NuxeoDocumentContext;
 import fr.toutatice.portail.cms.nuxeo.api.liveedit.OnlyofficeLiveEditHelper;
@@ -59,6 +66,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
     /** Internationalization bundle factory. */
     private final IBundleFactory bundleFactory;
 
+
     public OnlyofficeImpl() {
         personService = DirServiceFactory.getService(PersonService.class);
 
@@ -66,6 +74,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         IInternationalizationService internationalizationService = Locator.findMBean(IInternationalizationService.class,
                 IInternationalizationService.MBEAN_NAME);
         bundleFactory = internationalizationService.getBundleFactory(this.getClass().getClassLoader());
+        
     }
 
     private String getWindowProperty(PortletRequest request, String property) {
@@ -164,15 +173,42 @@ public class OnlyofficeImpl implements IOnlyofficeService {
     private String getDocumentType(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext) throws PortletException {
         PropertyMap fileContent = getCurrentFileContent(portletRequest, portletResponse, portletContext);
         String mimeType = fileContent.getString("mime-type");
-        return OnlyofficeLiveEditHelper.GetFileType(mimeType).name();
+        return OnlyofficeLiveEditHelper.getFileType(mimeType).name();
     }
 
     private EditorConfigCustomizationGoback getGoback(Bundle bundle, PortletRequest portletRequest, PortletResponse portletResponse,
             PortletContext portletContext) {
         EditorConfigCustomizationGoback goback = new EditorConfigCustomizationGoback();
         goback.setText(bundle.getString("BACK_TEXT"));
+        
         NuxeoController nuxeoController = new NuxeoController(portletRequest, portletResponse, portletContext);
-        goback.setUrl(nuxeoController.getPortalUrlFactory().getBackURL(nuxeoController.getPortalCtx(), false));
+        
+        Document currentDoc = null;
+		try {
+			currentDoc = getCurrentDoc(portletRequest, portletResponse, portletContext);
+		} catch (PortletException e1) {
+			// No back url
+		}
+        
+        PortalControllerContext pcc = new PortalControllerContext(portletContext, portletRequest, portletResponse);
+		Map<String, String> properties = new HashMap<String, String>();
+		
+        String backURL = nuxeoController.getPortalUrlFactory().getBackURL(nuxeoController.getPortalCtx(), false);
+        backURL = backURL.replace("/pagemarker", "/refresh/pagemarker");
+        
+        properties.put("osivia.title",bundle.getString("CLOSING"));
+        properties.put("backURL", backURL);
+        properties.put("id", currentDoc.getId());
+        properties.put("action", "close");
+        
+        String toCloseUrl = "";
+		try {
+			toCloseUrl = nuxeoController.getPortalUrlFactory().getStartPortletUrl(pcc ,"osivia-services-onlyoffice-portletInstance", properties);
+		} catch (PortalException e) {
+			// No back url
+		}
+		
+		goback.setUrl(toCloseUrl);
         return goback;
     }
 
@@ -219,7 +255,9 @@ public class OnlyofficeImpl implements IOnlyofficeService {
     		
             Person person = personService.getPerson(id);
             if (person != null) {
-                user.setName(person.getDisplayName());
+            	// LBI #1734 user avec chars spéciaux
+                String displayName = person.getDisplayName().replace("'", " ");
+				user.setName(displayName);
             } else {
                 user.setName(id);
             }
@@ -233,4 +271,57 @@ public class OnlyofficeImpl implements IOnlyofficeService {
 
         return user;
     }
+
+	/* (non-Javadoc)
+	 * @see org.osivia.services.onlyoffice.portlet.service.IOnlyofficeService#checkClosed(java.lang.String, long)
+	 */
+	@Override
+	public boolean waitForRefresh(PortalControllerContext pcc, String uuid) {
+		
+		boolean editedByMe = false;
+		boolean editedByOthers = false;
+		
+		Principal principal = pcc.getRequest().getUserPrincipal();
+
+		NuxeoController controller = new NuxeoController(pcc);
+		INuxeoCommand command = new IsDocumentCurrentlyEditedCommand(uuid);
+		JSONObject info = (JSONObject) controller.executeNuxeoCommand(command);
+				
+		if(info!= null && info.containsKey("isCurrentlyEdited")) {
+			
+			if(info.getBoolean("isCurrentlyEdited")) {
+				JSONObject currentlyEditedEntry = 	info.getJSONObject("currentlyEditedEntry");
+				
+				if(currentlyEditedEntry != null) {
+					JSONArray usernamesArray = currentlyEditedEntry.getJSONArray("username");
+					
+		            if (usernamesArray != null) {
+		                ListIterator userNamesI = usernamesArray.listIterator();
+		                while (userNamesI.hasNext()) {
+		                    String userName = (String) userNamesI.next();
+		                                        
+		                    if (principal != null && StringUtils.equals(principal.getName(), userName)) {
+		                    	editedByMe = true;
+		                    }
+		                    else {
+		                    	editedByOthers = true;
+		                    }
+		
+		                }
+		            }
+				}
+			}
+			
+
+			
+		}
+		
+		if(editedByMe && !editedByOthers) {
+			return true;
+		}
+		else return false;
+		
+	}
+
 }
+

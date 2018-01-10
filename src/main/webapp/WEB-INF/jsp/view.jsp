@@ -4,7 +4,9 @@
 <%@ taglib uri="http://www.osivia.org/jsp/taglib/osivia-portal" prefix="op"%>
 
 <portlet:defineObjects />
+<script type="text/javascript" src="${pageContext.request.contextPath}/js/onlyoffice-integration.js"></script>
 <script type="text/javascript" src="${apiUrl}"></script>
+
 
 <div class="portlet-filler flexbox">
 	<div id="onlyoffice-placeholder" data-onlyoffice-config='${onlyOfficeConfig}' class="flexbox"></div>

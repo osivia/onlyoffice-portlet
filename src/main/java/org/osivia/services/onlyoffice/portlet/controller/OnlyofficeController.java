@@ -1,6 +1,10 @@
 package org.osivia.services.onlyoffice.portlet.controller;
 
+import java.io.IOException;
+
 import javax.annotation.PostConstruct;
+import javax.portlet.ActionRequest;
+import javax.portlet.ActionResponse;
 import javax.portlet.PortletConfig;
 import javax.portlet.PortletContext;
 import javax.portlet.PortletException;
@@ -10,11 +14,15 @@ import javax.portlet.RenderRequest;
 import javax.portlet.RenderResponse;
 
 import org.apache.commons.lang.StringUtils;
+import org.osivia.portal.api.context.PortalControllerContext;
+import org.osivia.portal.api.windows.PortalWindow;
+import org.osivia.portal.api.windows.WindowFactory;
 import org.osivia.services.onlyoffice.portlet.service.IOnlyofficeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.portlet.bind.annotation.ActionMapping;
 import org.springframework.web.portlet.bind.annotation.RenderMapping;
 import org.springframework.web.portlet.context.PortletConfigAware;
 import org.springframework.web.portlet.context.PortletContextAware;
@@ -31,6 +39,8 @@ import fr.toutatice.portail.cms.nuxeo.api.CMSPortlet;
 public class OnlyofficeController extends CMSPortlet implements PortletContextAware, PortletConfigAware {
 
     private static final String DEFAULT_VIEW = "view";
+    
+	private static final String CLOSE_VIEW = "close";    
 
     private static final String ONLYOFFICE_DOMAIN = System.getProperty("osivia.onlyoffice.url", StringUtils.EMPTY);
 
@@ -74,8 +84,49 @@ public class OnlyofficeController extends CMSPortlet implements PortletContextAw
 
     @RenderMapping
     public String view(RenderRequest request, RenderResponse response) {
+    	
+    	PortalWindow window = WindowFactory.getWindow(request);
+		String action = window.getProperty("action");
+		
+		if(StringUtils.isNotEmpty(action) && "close".equals(action)) {
+			
+			return CLOSE_VIEW;
+		}
+    	
         return DEFAULT_VIEW;
     }
+
+    
+    @ActionMapping(params = "action=checkClosed")
+    public void checkClosed(ActionRequest request, ActionResponse response) {
+    	
+    	PortalWindow window = WindowFactory.getWindow(request);
+		String backUrl = window.getProperty("backURL");
+
+		PortalControllerContext pcc = new PortalControllerContext(portletContext, request, response);
+		
+		try {
+			String id = window.getProperty("id");
+			boolean waitForRefresh = false;
+			int timeout = 10, i=0;
+			
+			do {
+				waitForRefresh = onlyofficeService.waitForRefresh(pcc, id);
+				i++;
+				Thread.sleep(1000);
+				
+			}
+			// While the doc is not modified and i is below the timeout
+			while(waitForRefresh && i < timeout);
+			
+			
+			response.sendRedirect(backUrl);
+		} catch (IOException | InterruptedException e) {
+			e.printStackTrace();
+		}
+		
+    }
+    
 
     @ModelAttribute(value = "apiUrl")
     public String getApiUrl(PortletRequest portletRequest, PortletResponse portletResponse) {
@@ -84,7 +135,15 @@ public class OnlyofficeController extends CMSPortlet implements PortletContextAw
 
     @ModelAttribute(value = "onlyOfficeConfig")
     public String getOnlyOfficeConfig(PortletRequest portletRequest, PortletResponse portletResponse) throws PortletException {
-        return onlyofficeService.getOnlyOfficeConfig(portletRequest, portletResponse, getPortletContext());
+    	
+    	PortalWindow window = WindowFactory.getWindow(portletRequest);
+		String action = window.getProperty("action");
+		
+		if(StringUtils.isEmpty(action)) {
+    	
+			return onlyofficeService.getOnlyOfficeConfig(portletRequest, portletResponse, getPortletContext());
+		}
+		else return null;
     }
 
 }
