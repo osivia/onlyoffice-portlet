@@ -83,7 +83,7 @@ public class OnlyofficeController extends CMSPortlet implements PortletContextAw
     }
 
     @RenderMapping
-    public String view(RenderRequest request, RenderResponse response) {
+    public String view(RenderRequest request, RenderResponse response) throws PortletException {
     	
     	PortalWindow window = WindowFactory.getWindow(request);
 		String action = window.getProperty("action");
@@ -92,8 +92,22 @@ public class OnlyofficeController extends CMSPortlet implements PortletContextAw
 			
 			return CLOSE_VIEW;
 		}
-    	
-        return DEFAULT_VIEW;
+		
+		// LBI #1795 try to lock document if needed before edition
+		boolean withLock = Boolean.parseBoolean(window.getProperty("osivia.onlyoffice.withLock"));
+		if(withLock) {
+			
+			PortalControllerContext pcc = new PortalControllerContext(portletContext,request, response);
+			
+			boolean askForLocking = onlyofficeService.askForLocking(pcc);
+			
+			if(askForLocking) {
+				onlyofficeService.lockTemporary(pcc);
+			}
+		}
+		
+		
+		return DEFAULT_VIEW;
     }
 
     

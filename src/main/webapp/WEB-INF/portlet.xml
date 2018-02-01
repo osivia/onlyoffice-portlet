@@ -12,8 +12,13 @@
         <portlet-class>org.springframework.web.portlet.DispatcherPortlet</portlet-class>
         
         <init-param>
+            <name>contextClass</name>
+            <value>org.osivia.portal.api.portlet.AnnotationPortletApplicationContext</value>
+        </init-param>
+        
+        <init-param>
             <name>contextConfigLocation</name>
-            <value>/WEB-INF/osivia-services-onlyoffice-portlet.xml</value>
+            <value>org.osivia.services.onlyoffice.portlet.PortletConfig</value>
         </init-param>
         
         <expiration-cache>180</expiration-cache>
@@ -28,6 +33,7 @@
             <title>onlyoffice portlet</title>
         </portlet-info>
     </portlet>    
+        
     
     
 	<portlet>

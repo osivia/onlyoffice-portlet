@@ -28,6 +28,8 @@ import org.osivia.portal.api.internationalization.Bundle;
 import org.osivia.portal.api.internationalization.IBundleFactory;
 import org.osivia.portal.api.internationalization.IInternationalizationService;
 import org.osivia.portal.api.locator.Locator;
+import org.osivia.portal.api.notifications.INotificationsService;
+import org.osivia.portal.api.notifications.NotificationsType;
 import org.osivia.portal.api.windows.PortalWindow;
 import org.osivia.portal.api.windows.WindowFactory;
 import org.osivia.services.onlyoffice.portlet.command.GetUserJWTTokenCommand;
@@ -38,10 +40,13 @@ import org.osivia.services.onlyoffice.portlet.model.OnlyOfficeDocument;
 import org.osivia.services.onlyoffice.portlet.model.OnlyOfficeUser;
 import org.osivia.services.onlyoffice.portlet.model.OnlyofficeConfig;
 import org.osivia.services.onlyoffice.portlet.service.IOnlyofficeService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import fr.toutatice.portail.cms.nuxeo.api.INuxeoCommand;
 import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
+import fr.toutatice.portail.cms.nuxeo.api.cms.ExtendedDocumentInfos;
+import fr.toutatice.portail.cms.nuxeo.api.cms.ExtendedDocumentInfos.LockStatus;
 import fr.toutatice.portail.cms.nuxeo.api.cms.NuxeoDocumentContext;
 import fr.toutatice.portail.cms.nuxeo.api.liveedit.OnlyofficeLiveEditHelper;
 
@@ -65,6 +70,11 @@ public class OnlyofficeImpl implements IOnlyofficeService {
 
     /** Internationalization bundle factory. */
     private final IBundleFactory bundleFactory;
+    
+    /** Notifications service. */
+    @Autowired
+    private INotificationsService notificationsService;
+
 
 
     public OnlyofficeImpl() {
@@ -311,15 +321,64 @@ public class OnlyofficeImpl implements IOnlyofficeService {
 		            }
 				}
 			}
-			
-
-			
+						
 		}
 		
 		if(editedByMe && !editedByOthers) {
 			return true;
 		}
 		else return false;
+		
+	}
+
+	/* (non-Javadoc)
+	 * @see org.osivia.services.onlyoffice.portlet.service.IOnlyofficeService#askForLocking(javax.portlet.RenderRequest, javax.portlet.RenderResponse, javax.portlet.PortletContext)
+	 */
+	@Override
+	public boolean askForLocking(PortalControllerContext pcc) throws PortletException {
+		
+		Document currentDoc = getCurrentDoc(pcc.getRequest(), pcc.getResponse(), pcc.getPortletCtx());
+
+		NuxeoController controller = new NuxeoController(pcc);
+		INuxeoCommand command = new ExtendedDocumentInfosCommand(currentDoc.getPath());
+		ExtendedDocumentInfos info = (ExtendedDocumentInfos) controller.executeNuxeoCommand(command);
+		
+		Bundle bundle = bundleFactory.getBundle(pcc.getRequest().getLocale());
+		
+		if(info.isCurrentlyEdited()) {
+			
+			notificationsService.addSimpleNotification(pcc, bundle.getString("CURRENTLY_EDITED"), NotificationsType.WARNING);
+			return false;
+		}
+		else if(info.getLockStatus() != null && info.getLockStatus().equals(LockStatus.locked)) {
+			
+			notificationsService.addSimpleNotification(pcc, bundle.getString("CURRENTLY_LOCKED"), NotificationsType.WARNING);
+			return false;
+		}
+		else return true;
+		
+	}
+
+	/* (non-Javadoc)
+	 * @see org.osivia.services.onlyoffice.portlet.service.IOnlyofficeService#lockTemporary(org.osivia.portal.api.context.PortalControllerContext)
+	 */
+	@Override
+	public void lockTemporary(PortalControllerContext pcc) throws PortletException {
+		
+		Document currentDoc = getCurrentDoc(pcc.getRequest(), pcc.getResponse(), pcc.getPortletCtx());
+
+		NuxeoController controller = new NuxeoController(pcc);
+		INuxeoCommand command = new LockTemporaryCommand(currentDoc.getId());
+		
+		JSONObject info = (JSONObject) controller.executeNuxeoCommand(command);
+		String error = info.getString("error");
+		
+		if("1".equals(error)) {
+			Bundle bundle = bundleFactory.getBundle(pcc.getRequest().getLocale());
+			notificationsService.addSimpleNotification(pcc, bundle.getString("LOCK_ERROR"), NotificationsType.ERROR);
+
+		}
+		
 		
 	}
 
