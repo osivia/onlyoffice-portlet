@@ -11,9 +11,6 @@ import javax.portlet.PortletException;
 import javax.portlet.PortletRequest;
 import javax.portlet.PortletResponse;
 
-import net.sf.json.JSONArray;
-import net.sf.json.JSONObject;
-
 import org.apache.commons.lang.StringUtils;
 import org.nuxeo.ecm.automation.client.model.Document;
 import org.nuxeo.ecm.automation.client.model.PropertyMap;
@@ -49,16 +46,18 @@ import fr.toutatice.portail.cms.nuxeo.api.cms.ExtendedDocumentInfos;
 import fr.toutatice.portail.cms.nuxeo.api.cms.ExtendedDocumentInfos.LockStatus;
 import fr.toutatice.portail.cms.nuxeo.api.cms.NuxeoDocumentContext;
 import fr.toutatice.portail.cms.nuxeo.api.liveedit.OnlyofficeLiveEditHelper;
+import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
 
 @Service
 public class OnlyofficeImpl implements IOnlyofficeService {
 
 
-	private static final String ANONYMOUS_NAME = "Utilisateur invité";
+    private static final String ANONYMOUS_NAME = "Utilisateur invité";
 
-	private static final String ANONYMOUS_LOGIN = "Anonymous";
+    private static final String ANONYMOUS_LOGIN = "Anonymous";
 
-	private static final String WEBSERVICE_CALLBACKEDIT_PATH = "/site/onlyoffice/callbackEdit/";
+    private static final String WEBSERVICE_CALLBACKEDIT_PATH = "/site/onlyoffice/callbackEdit/";
 
     private static final String ONLYOFFICE_TOKEN_ID = System.getProperty("osivia.onlyoffice.token.id", "onlyoffice");
 
@@ -70,7 +69,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
 
     /** Internationalization bundle factory. */
     private final IBundleFactory bundleFactory;
-    
+
     /** Notifications service. */
     @Autowired
     private INotificationsService notificationsService;
@@ -84,7 +83,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         IInternationalizationService internationalizationService = Locator.findMBean(IInternationalizationService.class,
                 IInternationalizationService.MBEAN_NAME);
         bundleFactory = internationalizationService.getBundleFactory(this.getClass().getClassLoader());
-        
+
     }
 
     private String getWindowProperty(PortletRequest request, String property) {
@@ -125,9 +124,10 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         return currentDoc;
     }
 
-    private String getMode(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext) throws PortletException {
+    private String getMode(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext, String documentPath)
+            throws PortletException {
 
-        NuxeoDocumentContext documentContext = NuxeoController.getDocumentContext(portletRequest, portletResponse, portletContext);
+        NuxeoDocumentContext documentContext = NuxeoController.getDocumentContext(portletRequest, portletResponse, portletContext, documentPath);
 
         BasicPermissions permissions = documentContext.getPermissions(BasicPermissions.class);
         if (permissions.isEditableByUser()) {
@@ -190,40 +190,44 @@ public class OnlyofficeImpl implements IOnlyofficeService {
             PortletContext portletContext) {
         EditorConfigCustomizationGoback goback = new EditorConfigCustomizationGoback();
         goback.setText(bundle.getString("BACK_TEXT"));
-        
+
         NuxeoController nuxeoController = new NuxeoController(portletRequest, portletResponse, portletContext);
-        
+
         Document currentDoc = null;
-		try {
-			currentDoc = getCurrentDoc(portletRequest, portletResponse, portletContext);
-		} catch (PortletException e1) {
-			// No back url
-		}
-        
+        try {
+            currentDoc = getCurrentDoc(portletRequest, portletResponse, portletContext);
+        } catch (PortletException e1) {
+            // No back url
+        }
+
         PortalControllerContext pcc = new PortalControllerContext(portletContext, portletRequest, portletResponse);
-		Map<String, String> properties = new HashMap<String, String>();
-		
+        Map<String, String> properties = new HashMap<>();
+
         String backURL = nuxeoController.getPortalUrlFactory().getBackURL(nuxeoController.getPortalCtx(), false);
-        backURL = backURL.replace("/pagemarker", "/refresh/pagemarker");
-        
-        properties.put("osivia.title",bundle.getString("CLOSING"));
+        if (StringUtils.isNotEmpty(backURL)) {
+            backURL = backURL.replace("/pagemarker", "/refresh/pagemarker");
+        } else {
+            backURL = nuxeoController.getLink(currentDoc).getUrl();
+        }
         properties.put("backURL", backURL);
+        properties.put("osivia.title",bundle.getString("CLOSING"));
         properties.put("id", currentDoc.getId());
         properties.put("action", "close");
-        
+
         String toCloseUrl = "";
-		try {
-			toCloseUrl = nuxeoController.getPortalUrlFactory().getStartPortletUrl(pcc ,"osivia-services-onlyoffice-portletInstance", properties);
-		} catch (PortalException e) {
-			// No back url
-		}
-		
-		goback.setUrl(toCloseUrl);
+        try {
+            toCloseUrl = nuxeoController.getPortalUrlFactory().getStartPortletUrl(pcc ,"osivia-services-onlyoffice-portletInstance", properties);
+        } catch (PortalException e) {
+            // No back url
+        }
+
+        goback.setUrl(toCloseUrl);
         return goback;
     }
 
     @Override
-    public String getOnlyOfficeConfig(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext) throws PortletException {
+    public String getOnlyOfficeConfig(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext, String documentPath)
+            throws PortletException {
 
         OnlyofficeConfig onlyOfficeConfig = new OnlyofficeConfig();
         OnlyOfficeDocument onlyOfficeDocument = new OnlyOfficeDocument();
@@ -236,8 +240,8 @@ public class OnlyofficeImpl implements IOnlyofficeService {
 
         EditorConfig onlyOfficeEditorConfig = new EditorConfig();
         onlyOfficeEditorConfig.setCallbackUrl(getCallbackUrl(portletRequest, portletResponse, portletContext));
-		onlyOfficeEditorConfig.setUser(buildOnlyOfficeUser(portletRequest.getUserPrincipal()));
-        onlyOfficeEditorConfig.setMode(getMode(portletRequest, portletResponse, portletContext));
+        onlyOfficeEditorConfig.setUser(buildOnlyOfficeUser(portletRequest.getUserPrincipal()));
+        onlyOfficeEditorConfig.setMode(getMode(portletRequest, portletResponse, portletContext, documentPath));
         onlyOfficeEditorConfig.setLang(getLang(portletRequest.getLocale()));
         EditorConfigCustomization editorConfigCustomization = new EditorConfigCustomization();
         editorConfigCustomization.setChat(true);
@@ -256,131 +260,128 @@ public class OnlyofficeImpl implements IOnlyofficeService {
     }
 
     private OnlyOfficeUser buildOnlyOfficeUser(Principal userPrincipal) {
-    	
-    	OnlyOfficeUser user = new OnlyOfficeUser();
-    	String id = ANONYMOUS_LOGIN;
-    	// LBI #1732 gestion user anonyme
-    	if(userPrincipal != null) {
-    		id = userPrincipal.getName();
-    		
+
+        OnlyOfficeUser user = new OnlyOfficeUser();
+        String id = ANONYMOUS_LOGIN;
+        // LBI #1732 gestion user anonyme
+        if(userPrincipal != null) {
+            id = userPrincipal.getName();
+
             Person person = personService.getPerson(id);
             if (person != null) {
-            	// LBI #1734 user avec chars spéciaux
+                // LBI #1734 user avec chars spéciaux
                 String displayName = person.getDisplayName().replace("'", " ");
-				user.setName(displayName);
+                user.setName(displayName);
             } else {
                 user.setName(id);
             }
-    	}
-    	else {
-    		user.setName(ANONYMOUS_NAME);
-    	}
-    	
-    	user.setId(id);
-    	       
+        }
+        else {
+            user.setName(ANONYMOUS_NAME);
+        }
+
+        user.setId(id);
+
 
         return user;
     }
 
-	/* (non-Javadoc)
-	 * @see org.osivia.services.onlyoffice.portlet.service.IOnlyofficeService#checkClosed(java.lang.String, long)
-	 */
-	@Override
-	public boolean waitForRefresh(PortalControllerContext pcc, String uuid) {
-		
-		boolean editedByMe = false;
-		boolean editedByOthers = false;
-		
-		Principal principal = pcc.getRequest().getUserPrincipal();
+    /* (non-Javadoc)
+     * @see org.osivia.services.onlyoffice.portlet.service.IOnlyofficeService#checkClosed(java.lang.String, long)
+     */
+    @Override
+    public boolean waitForRefresh(PortalControllerContext pcc, String uuid) {
 
-		NuxeoController controller = new NuxeoController(pcc);
-		INuxeoCommand command = new IsDocumentCurrentlyEditedCommand(uuid);
-		JSONObject info = (JSONObject) controller.executeNuxeoCommand(command);
-				
-		if(info!= null && info.containsKey("isCurrentlyEdited")) {
-			
-			if(info.getBoolean("isCurrentlyEdited")) {
-				JSONObject currentlyEditedEntry = 	info.getJSONObject("currentlyEditedEntry");
-				
-				if(currentlyEditedEntry != null) {
-					JSONArray usernamesArray = currentlyEditedEntry.getJSONArray("username");
-					
-		            if (usernamesArray != null) {
-		                ListIterator userNamesI = usernamesArray.listIterator();
-		                while (userNamesI.hasNext()) {
-		                    String userName = (String) userNamesI.next();
-		                                        
-		                    if (principal != null && StringUtils.equals(principal.getName(), userName)) {
-		                    	editedByMe = true;
-		                    }
-		                    else {
-		                    	editedByOthers = true;
-		                    }
-		
-		                }
-		            }
-				}
-			}
-						
-		}
-		
-		if(editedByMe && !editedByOthers) {
-			return true;
-		}
-		else return false;
-		
-	}
+        boolean editedByMe = false;
+        boolean editedByOthers = false;
 
-	/* (non-Javadoc)
-	 * @see org.osivia.services.onlyoffice.portlet.service.IOnlyofficeService#askForLocking(javax.portlet.RenderRequest, javax.portlet.RenderResponse, javax.portlet.PortletContext)
-	 */
-	@Override
-	public boolean askForLocking(PortalControllerContext pcc) throws PortletException {
-		
-		Document currentDoc = getCurrentDoc(pcc.getRequest(), pcc.getResponse(), pcc.getPortletCtx());
+        Principal principal = pcc.getRequest().getUserPrincipal();
 
-		NuxeoController controller = new NuxeoController(pcc);
-		INuxeoCommand command = new ExtendedDocumentInfosCommand(currentDoc.getPath());
-		ExtendedDocumentInfos info = (ExtendedDocumentInfos) controller.executeNuxeoCommand(command);
-		
-		Bundle bundle = bundleFactory.getBundle(pcc.getRequest().getLocale());
-		
-		if(info.isCurrentlyEdited()) {
-			
-			notificationsService.addSimpleNotification(pcc, bundle.getString("CURRENTLY_EDITED"), NotificationsType.WARNING);
-			return false;
-		}
-		else if(info.getLockStatus() != null && info.getLockStatus().equals(LockStatus.locked)) {
-			
-			notificationsService.addSimpleNotification(pcc, bundle.getString("CURRENTLY_LOCKED"), NotificationsType.WARNING);
-			return false;
-		}
-		else return true;
-		
-	}
+        NuxeoController controller = new NuxeoController(pcc);
+        INuxeoCommand command = new IsDocumentCurrentlyEditedCommand(uuid);
+        JSONObject info = (JSONObject) controller.executeNuxeoCommand(command);
 
-	/* (non-Javadoc)
-	 * @see org.osivia.services.onlyoffice.portlet.service.IOnlyofficeService#lockTemporary(org.osivia.portal.api.context.PortalControllerContext)
-	 */
-	@Override
-	public void lockTemporary(PortalControllerContext pcc) throws PortletException {
-		
-		Document currentDoc = getCurrentDoc(pcc.getRequest(), pcc.getResponse(), pcc.getPortletCtx());
+        if(info!= null && info.containsKey("isCurrentlyEdited")) {
 
-		NuxeoController controller = new NuxeoController(pcc);
-		INuxeoCommand command = new LockTemporaryCommand(currentDoc.getId());
-		
-		JSONObject info = (JSONObject) controller.executeNuxeoCommand(command);
-		String error = info.getString("error");
-		
-		if("1".equals(error)) {
-			Bundle bundle = bundleFactory.getBundle(pcc.getRequest().getLocale());
-			notificationsService.addSimpleNotification(pcc, bundle.getString("LOCK_ERROR"), NotificationsType.ERROR);
+            if(info.getBoolean("isCurrentlyEdited")) {
+                JSONObject currentlyEditedEntry = 	info.getJSONObject("currentlyEditedEntry");
 
-		}
-		
-		
-	}
+                if(currentlyEditedEntry != null) {
+                    JSONArray usernamesArray = currentlyEditedEntry.getJSONArray("username");
+
+                    if (usernamesArray != null) {
+                        ListIterator userNamesI = usernamesArray.listIterator();
+                        while (userNamesI.hasNext()) {
+                            String userName = (String) userNamesI.next();
+
+                            if (principal != null && StringUtils.equals(principal.getName(), userName)) {
+                                editedByMe = true;
+                            }
+                            else {
+                                editedByOthers = true;
+                            }
+
+                        }
+                    }
+                }
+            }
+
+        }
+
+        if(editedByMe && !editedByOthers) {
+            return true;
+        } else {
+            return false;
+        }
+
+    }
+
+    /* (non-Javadoc)
+     * @see org.osivia.services.onlyoffice.portlet.service.IOnlyofficeService#askForLocking(javax.portlet.RenderRequest, javax.portlet.RenderResponse, javax.portlet.PortletContext)
+     */
+    @Override
+    public boolean askForLocking(NuxeoController nuxeoController) throws PortletException {
+
+        Document currentDoc = getCurrentDoc(nuxeoController.getRequest(), nuxeoController.getResponse(), nuxeoController.getPortletCtx());
+
+        INuxeoCommand command = new ExtendedDocumentInfosCommand(currentDoc.getPath());
+        ExtendedDocumentInfos info = (ExtendedDocumentInfos) nuxeoController.executeNuxeoCommand(command);
+
+        Bundle bundle = bundleFactory.getBundle(nuxeoController.getRequest().getLocale());
+
+        if(info.isCurrentlyEdited()) {
+
+            notificationsService.addSimpleNotification(nuxeoController.getPortalCtx(), bundle.getString("CURRENTLY_EDITED"), NotificationsType.WARNING);
+            return false;
+        }
+        else if(info.getLockStatus() != null && info.getLockStatus().equals(LockStatus.locked)) {
+
+            notificationsService.addSimpleNotification(nuxeoController.getPortalCtx(), bundle.getString("CURRENTLY_LOCKED"), NotificationsType.WARNING);
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    /* (non-Javadoc)
+     * @see org.osivia.services.onlyoffice.portlet.service.IOnlyofficeService#lockTemporary(org.osivia.portal.api.context.PortalControllerContext)
+     */
+    @Override
+    public void lockTemporary(NuxeoController nuxeoController) throws PortletException {
+
+        Document currentDoc = getCurrentDoc(nuxeoController.getRequest(), nuxeoController.getResponse(), nuxeoController.getPortletCtx());
+
+        INuxeoCommand command = new LockTemporaryCommand(currentDoc.getId());
+
+        JSONObject info = (JSONObject) nuxeoController.executeNuxeoCommand(command);
+        String error = info.getString("error");
+
+        if("1".equals(error)) {
+            Bundle bundle = bundleFactory.getBundle(nuxeoController.getRequest().getLocale());
+            notificationsService.addSimpleNotification(nuxeoController.getPortalCtx(), bundle.getString("LOCK_ERROR"), NotificationsType.ERROR);
+        }
+    }
 
 }
 

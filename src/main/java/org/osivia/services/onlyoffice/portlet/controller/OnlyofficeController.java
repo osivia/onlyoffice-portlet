@@ -14,6 +14,7 @@ import javax.portlet.RenderRequest;
 import javax.portlet.RenderResponse;
 
 import org.apache.commons.lang.StringUtils;
+import org.osivia.portal.api.Constants;
 import org.osivia.portal.api.context.PortalControllerContext;
 import org.osivia.portal.api.windows.PortalWindow;
 import org.osivia.portal.api.windows.WindowFactory;
@@ -28,6 +29,7 @@ import org.springframework.web.portlet.context.PortletConfigAware;
 import org.springframework.web.portlet.context.PortletContextAware;
 
 import fr.toutatice.portail.cms.nuxeo.api.CMSPortlet;
+import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
 
 /**
  * OnlyofficeController
@@ -39,8 +41,8 @@ import fr.toutatice.portail.cms.nuxeo.api.CMSPortlet;
 public class OnlyofficeController extends CMSPortlet implements PortletContextAware, PortletConfigAware {
 
     private static final String DEFAULT_VIEW = "view";
-    
-	private static final String CLOSE_VIEW = "close";    
+
+    private static final String CLOSE_VIEW = "close";
 
     private static final String ONLYOFFICE_DOMAIN = System.getProperty("osivia.onlyoffice.url", StringUtils.EMPTY);
 
@@ -84,63 +86,63 @@ public class OnlyofficeController extends CMSPortlet implements PortletContextAw
 
     @RenderMapping
     public String view(RenderRequest request, RenderResponse response) throws PortletException {
-    	
-    	PortalWindow window = WindowFactory.getWindow(request);
-		String action = window.getProperty("action");
-		
-		if(StringUtils.isNotEmpty(action) && "close".equals(action)) {
-			
-			return CLOSE_VIEW;
-		}
-		
-		// LBI #1795 try to lock document if needed before edition
-		boolean withLock = Boolean.parseBoolean(window.getProperty("osivia.onlyoffice.withLock"));
-		if(withLock) {
-			
-			PortalControllerContext pcc = new PortalControllerContext(portletContext,request, response);
-			
-			boolean askForLocking = onlyofficeService.askForLocking(pcc);
-			
-			if(askForLocking) {
-				onlyofficeService.lockTemporary(pcc);
-			}
-		}
-		
-		
-		return DEFAULT_VIEW;
+
+        PortalWindow window = WindowFactory.getWindow(request);
+        String action = window.getProperty("action");
+
+        if(StringUtils.isNotEmpty(action) && "close".equals(action)) {
+
+            return CLOSE_VIEW;
+        }
+
+        // LBI #1795 try to lock document if needed before edition
+        boolean withLock = Boolean.parseBoolean(window.getProperty("osivia.onlyoffice.withLock"));
+        if(withLock) {
+
+            NuxeoController nuxeoController = new NuxeoController(request, response, getPortletContext());
+
+            boolean askForLocking = onlyofficeService.askForLocking(nuxeoController);
+
+            if(askForLocking) {
+                onlyofficeService.lockTemporary(nuxeoController);
+            }
+        }
+
+
+        return DEFAULT_VIEW;
     }
 
-    
+
     @ActionMapping(params = "action=checkClosed")
     public void checkClosed(ActionRequest request, ActionResponse response) {
-    	
-    	PortalWindow window = WindowFactory.getWindow(request);
-		String backUrl = window.getProperty("backURL");
 
-		PortalControllerContext pcc = new PortalControllerContext(portletContext, request, response);
-		
-		try {
-			String id = window.getProperty("id");
-			boolean waitForRefresh = false;
-			int timeout = 10, i=0;
-			
-			do {
-				waitForRefresh = onlyofficeService.waitForRefresh(pcc, id);
-				i++;
-				Thread.sleep(1000);
-				
-			}
-			// While the doc is not modified and i is below the timeout
-			while(waitForRefresh && i < timeout);
-			
-			
-			response.sendRedirect(backUrl);
-		} catch (IOException | InterruptedException e) {
-			e.printStackTrace();
-		}
-		
+        PortalWindow window = WindowFactory.getWindow(request);
+        String backUrl = window.getProperty("backURL");
+
+        PortalControllerContext pcc = new PortalControllerContext(portletContext, request, response);
+
+        try {
+            String id = window.getProperty("id");
+            boolean waitForRefresh = false;
+            int timeout = 10, i=0;
+
+            do {
+                waitForRefresh = onlyofficeService.waitForRefresh(pcc, id);
+                i++;
+                Thread.sleep(1000);
+
+            }
+            // While the doc is not modified and i is below the timeout
+            while(waitForRefresh && i < timeout);
+
+
+            response.sendRedirect(backUrl);
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+
     }
-    
+
 
     @ModelAttribute(value = "apiUrl")
     public String getApiUrl(PortletRequest portletRequest, PortletResponse portletResponse) {
@@ -149,15 +151,16 @@ public class OnlyofficeController extends CMSPortlet implements PortletContextAw
 
     @ModelAttribute(value = "onlyOfficeConfig")
     public String getOnlyOfficeConfig(PortletRequest portletRequest, PortletResponse portletResponse) throws PortletException {
-    	
-    	PortalWindow window = WindowFactory.getWindow(portletRequest);
-		String action = window.getProperty("action");
-		
-		if(StringUtils.isEmpty(action)) {
-    	
-			return onlyofficeService.getOnlyOfficeConfig(portletRequest, portletResponse, getPortletContext());
-		}
-		else return null;
+
+        PortalWindow window = WindowFactory.getWindow(portletRequest);
+        String action = window.getProperty("action");
+        String documentPath = window.getProperty(Constants.WINDOW_PROP_URI);
+
+        if(StringUtils.isEmpty(action)) {
+            return onlyofficeService.getOnlyOfficeConfig(portletRequest, portletResponse, getPortletContext(), documentPath);
+        } else {
+            return null;
+        }
     }
 
 }
