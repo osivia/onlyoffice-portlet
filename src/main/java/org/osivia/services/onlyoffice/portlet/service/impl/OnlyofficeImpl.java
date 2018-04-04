@@ -207,7 +207,8 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         if (StringUtils.isNotEmpty(backURL)) {
             backURL = backURL.replace("/pagemarker", "/refresh/pagemarker");
         } else {
-            backURL = nuxeoController.getLink(currentDoc).getUrl();
+            // displaycontext = "menu" afin de réinitialiser le backpagemarker
+            backURL = nuxeoController.getLink(currentDoc, "menu").getUrl();
         }
         properties.put("backURL", backURL);
         properties.put("osivia.title",bundle.getString("CLOSING"));

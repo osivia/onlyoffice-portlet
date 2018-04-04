@@ -135,8 +135,10 @@ public class OnlyofficeController extends CMSPortlet implements PortletContextAw
             // While the doc is not modified and i is below the timeout
             while(waitForRefresh && i < timeout);
 
+            if (StringUtils.isNotEmpty(backUrl)) {
+                response.sendRedirect(backUrl);
+            }
 
-            response.sendRedirect(backUrl);
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
