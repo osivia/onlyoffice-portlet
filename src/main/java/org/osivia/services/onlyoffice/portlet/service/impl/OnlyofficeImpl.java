@@ -234,8 +234,14 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         OnlyOfficeDocument onlyOfficeDocument = new OnlyOfficeDocument();
         onlyOfficeDocument.setFileType(getDocFileType(portletRequest, portletResponse, portletContext));
         onlyOfficeDocument.setKey(getDocKey(portletRequest, portletResponse, portletContext));
-        onlyOfficeDocument.setTitle(getDocTitle(portletRequest, portletResponse, portletContext));
-        onlyOfficeDocument.setUrl(getDocUrl(portletRequest, portletResponse, portletContext));
+        
+        // LBI #1913 - Escape quotes in title and url
+        String escapeTitle = getDocTitle(portletRequest, portletResponse, portletContext);
+        onlyOfficeDocument.setTitle(escapeTitle.replaceAll("'", " "));
+        
+        String escapeUrl = getDocUrl(portletRequest, portletResponse, portletContext);
+        onlyOfficeDocument.setUrl(escapeUrl.replaceAll("'", ""));
+        
         onlyOfficeConfig.setDocument(onlyOfficeDocument);
         onlyOfficeConfig.setDocumentType(getDocumentType(portletRequest, portletResponse, portletContext));
 
