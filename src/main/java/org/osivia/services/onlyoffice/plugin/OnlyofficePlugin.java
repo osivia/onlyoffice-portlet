@@ -13,14 +13,17 @@ import fr.toutatice.portail.cms.nuxeo.api.liveedit.OnlyofficeLiveEditHelper;
  */
 public class OnlyofficePlugin extends AbstractPluginPortlet {
 
-    @Override
-    protected void customizeCMSProperties(String customizationId, CustomizationContext context) {
 
-    }
 
     @Override
     protected String getPluginName() {
         return OnlyofficeLiveEditHelper.ONLYOFFICE_PLUGIN_NAME;
+    }
+
+    @Override
+    protected void customizeCMSProperties(CustomizationContext context) {
+        // TODO Auto-generated method stub
+        
     }
 
 

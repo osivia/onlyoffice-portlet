@@ -16,7 +16,7 @@ import org.nuxeo.ecm.automation.client.model.Document;
 import org.nuxeo.ecm.automation.client.model.PropertyMap;
 import org.osivia.portal.api.Constants;
 import org.osivia.portal.api.PortalException;
-import org.osivia.portal.api.cms.impl.BasicPermissions;
+
 import org.osivia.portal.api.context.PortalControllerContext;
 import org.osivia.portal.api.directory.v2.DirServiceFactory;
 import org.osivia.portal.api.directory.v2.model.Person;
@@ -42,9 +42,10 @@ import org.springframework.stereotype.Service;
 
 import fr.toutatice.portail.cms.nuxeo.api.INuxeoCommand;
 import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
-import fr.toutatice.portail.cms.nuxeo.api.cms.ExtendedDocumentInfos;
-import fr.toutatice.portail.cms.nuxeo.api.cms.ExtendedDocumentInfos.LockStatus;
+import fr.toutatice.portail.cms.nuxeo.api.cms.LockStatus;
 import fr.toutatice.portail.cms.nuxeo.api.cms.NuxeoDocumentContext;
+import fr.toutatice.portail.cms.nuxeo.api.cms.NuxeoPermissions;
+import fr.toutatice.portail.cms.nuxeo.api.cms.NuxeoPublicationInfos;
 import fr.toutatice.portail.cms.nuxeo.api.liveedit.OnlyofficeLiveEditHelper;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
@@ -112,14 +113,11 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         if (currentDoc == null) {
             String path = getWindowProperty(portletRequest, Constants.WINDOW_PROP_URI);
             NuxeoDocumentContext documentContext;
-            try {
-                documentContext = NuxeoController.getDocumentContext(portletRequest, portletResponse, portletContext, path);
-            } catch (PortletException e) {
-                throw new PortletException(e);
-            }
-            Document document = documentContext.getDoc();
-            nuxeoController.setCurrentDoc(document);
-            currentDoc = nuxeoController.getCurrentDoc();
+            documentContext = nuxeoController.getDocumentContext( path);
+             
+            currentDoc = documentContext.getDocument();
+            nuxeoController.setCurrentDoc(currentDoc);
+
         }
         return currentDoc;
     }
@@ -127,10 +125,12 @@ public class OnlyofficeImpl implements IOnlyofficeService {
     private String getMode(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext, String documentPath)
             throws PortletException {
 
-        NuxeoDocumentContext documentContext = NuxeoController.getDocumentContext(portletRequest, portletResponse, portletContext, documentPath);
+        PortalControllerContext portalCtx = new PortalControllerContext(portletContext, portletRequest, portletResponse);
+        NuxeoController ctl = new NuxeoController(portalCtx );
+        NuxeoDocumentContext documentContext = ctl.getDocumentContext(documentPath);
 
-        BasicPermissions permissions = documentContext.getPermissions(BasicPermissions.class);
-        if (permissions.isEditableByUser()) {
+        NuxeoPermissions permissions = documentContext.getPermissions();
+        if (permissions.isEditable()) {
             return "edit";
         } else {
             return "view";
@@ -349,19 +349,17 @@ public class OnlyofficeImpl implements IOnlyofficeService {
     @Override
     public boolean askForLocking(NuxeoController nuxeoController) throws PortletException {
 
-        Document currentDoc = getCurrentDoc(nuxeoController.getRequest(), nuxeoController.getResponse(), nuxeoController.getPortletCtx());
-
-        INuxeoCommand command = new ExtendedDocumentInfosCommand(currentDoc.getPath());
-        ExtendedDocumentInfos info = (ExtendedDocumentInfos) nuxeoController.executeNuxeoCommand(command);
+        NuxeoDocumentContext ctx = nuxeoController.getDocumentContext(getCurrentDoc(nuxeoController.getRequest(), nuxeoController.getResponse(), nuxeoController.getPortletCtx()).getPath());
+        NuxeoPublicationInfos infos = ctx.getPublicationInfos();
 
         Bundle bundle = bundleFactory.getBundle(nuxeoController.getRequest().getLocale());
 
-        if(info.isCurrentlyEdited()) {
+        if(infos.isBeingModified()) {
 
             notificationsService.addSimpleNotification(nuxeoController.getPortalCtx(), bundle.getString("CURRENTLY_EDITED"), NotificationsType.WARNING);
             return false;
         }
-        else if(info.getLockStatus() != null && info.getLockStatus().equals(LockStatus.locked)) {
+        else if(infos.getLockStatus() != null && infos.getLockStatus().equals(LockStatus.LOCKED)) {
 
             notificationsService.addSimpleNotification(nuxeoController.getPortalCtx(), bundle.getString("CURRENTLY_LOCKED"), NotificationsType.WARNING);
             return false;
