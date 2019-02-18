@@ -1,5 +1,6 @@
 iframe[name="frameEditor"]{
 	flex : 1;
+	min-height: 600px;
 }
 
 #maximized {
