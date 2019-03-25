@@ -1,0 +1,35 @@
+iframe[name="frameEditor"] {
+    flex : 1;
+    min-height: 600px;
+}
+
+
+#maximized {
+    .onlyoffice-container {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 100%;
+        width: 100%;
+        z-index: 9900;
+        
+        > .onlyoffice-toolbar {
+            .navbar {
+                margin-bottom: 0;
+            }
+        }
+        
+        > .onlyoffice-component {
+            display: flex;
+            flex: 1;
+            
+            > iframe {
+                min-height: auto;
+            }
+        }
+    }
+}

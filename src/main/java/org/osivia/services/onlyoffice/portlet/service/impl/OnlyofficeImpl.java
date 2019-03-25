@@ -16,7 +16,6 @@ import org.nuxeo.ecm.automation.client.model.Document;
 import org.nuxeo.ecm.automation.client.model.PropertyMap;
 import org.osivia.portal.api.Constants;
 import org.osivia.portal.api.PortalException;
-
 import org.osivia.portal.api.context.PortalControllerContext;
 import org.osivia.portal.api.directory.v2.DirServiceFactory;
 import org.osivia.portal.api.directory.v2.model.Person;
@@ -27,6 +26,7 @@ import org.osivia.portal.api.internationalization.IInternationalizationService;
 import org.osivia.portal.api.locator.Locator;
 import org.osivia.portal.api.notifications.INotificationsService;
 import org.osivia.portal.api.notifications.NotificationsType;
+import org.osivia.portal.api.urls.IPortalUrlFactory;
 import org.osivia.portal.api.windows.PortalWindow;
 import org.osivia.portal.api.windows.WindowFactory;
 import org.osivia.services.onlyoffice.portlet.command.GetUserJWTTokenCommand;
@@ -187,44 +187,19 @@ public class OnlyofficeImpl implements IOnlyofficeService {
     }
 
     private EditorConfigCustomizationGoback getGoback(Bundle bundle, PortletRequest portletRequest, PortletResponse portletResponse,
-            PortletContext portletContext) {
+            PortletContext portletContext) throws PortletException {
+        // Portal controller context
+        PortalControllerContext portalControllerContext = new PortalControllerContext(portletContext, portletRequest, portletResponse);
+
         EditorConfigCustomizationGoback goback = new EditorConfigCustomizationGoback();
         goback.setText(bundle.getString("BACK_TEXT"));
 
-        NuxeoController nuxeoController = new NuxeoController(portletRequest, portletResponse, portletContext);
-
-        Document currentDoc = null;
-        try {
-            currentDoc = getCurrentDoc(portletRequest, portletResponse, portletContext);
-        } catch (PortletException e1) {
-            // No back url
-        }
-
-        PortalControllerContext pcc = new PortalControllerContext(portletContext, portletRequest, portletResponse);
-        Map<String, String> properties = new HashMap<>();
-
-        String backURL = nuxeoController.getPortalUrlFactory().getBackURL(nuxeoController.getPortalCtx(), false);
-        if (StringUtils.isNotEmpty(backURL)) {
-            backURL = backURL.replace("/pagemarker", "/refresh/pagemarker");
-        } else {
-            // displaycontext = "menu" afin de réinitialiser le backpagemarker
-            backURL = nuxeoController.getLink(currentDoc, "menu").getUrl();
-        }
-        properties.put("backURL", backURL);
-        properties.put("osivia.title",bundle.getString("CLOSING"));
-        properties.put("id", currentDoc.getId());
-        properties.put("action", "close");
-
-        String toCloseUrl = "";
-        try {
-            toCloseUrl = nuxeoController.getPortalUrlFactory().getStartPortletUrl(pcc ,"osivia-services-onlyoffice-portletInstance", properties);
-        } catch (PortalException e) {
-            // No back url
-        }
-
+        String toCloseUrl = this.getCloseUrl(portalControllerContext);
         goback.setUrl(toCloseUrl);
+
         return goback;
     }
+
 
     @Override
     public String getOnlyOfficeConfig(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext, String documentPath)
@@ -234,14 +209,14 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         OnlyOfficeDocument onlyOfficeDocument = new OnlyOfficeDocument();
         onlyOfficeDocument.setFileType(getDocFileType(portletRequest, portletResponse, portletContext));
         onlyOfficeDocument.setKey(getDocKey(portletRequest, portletResponse, portletContext));
-        
+
         // LBI #1913 - Escape quotes in title and url
         String escapeTitle = getDocTitle(portletRequest, portletResponse, portletContext);
         onlyOfficeDocument.setTitle(escapeTitle.replaceAll("'", " "));
-        
+
         String escapeUrl = getDocUrl(portletRequest, portletResponse, portletContext);
         onlyOfficeDocument.setUrl(escapeUrl.replaceAll("'", ""));
-        
+
         onlyOfficeConfig.setDocument(onlyOfficeDocument);
         onlyOfficeConfig.setDocumentType(getDocumentType(portletRequest, portletResponse, portletContext));
 
@@ -252,6 +227,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         onlyOfficeEditorConfig.setLang(getLang(portletRequest.getLocale()));
         EditorConfigCustomization editorConfigCustomization = new EditorConfigCustomization();
         editorConfigCustomization.setChat(true);
+        editorConfigCustomization.setCompactToolbar(false);
         Bundle bundle = bundleFactory.getBundle(portletRequest.getLocale());
         editorConfigCustomization.setGoback(getGoback(bundle, portletRequest, portletResponse, portletContext));
         onlyOfficeEditorConfig.setCustomization(editorConfigCustomization);
@@ -261,6 +237,87 @@ public class OnlyofficeImpl implements IOnlyofficeService {
 
         return onlyOfficeConfigJson.toString();
     }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, String> getToolbarProperties(PortalControllerContext portalControllerContext) throws PortletException {
+        // Portlet request
+        PortletRequest request = portalControllerContext.getRequest();
+        // Current window
+        PortalWindow window = WindowFactory.getWindow(request);
+        // Action
+        String action = window.getProperty("action");
+
+        // Toolbar properties
+        Map<String, String> properties;
+        if (StringUtils.isEmpty(action)) {
+            properties = new HashMap<>();
+
+            // Current document title
+            Document document = this.getCurrentDoc(request, portalControllerContext.getResponse(), portalControllerContext.getPortletCtx());
+            properties.put("documentTitle", document.getTitle());
+
+            // Close URL
+            String closeUrl = this.getCloseUrl(portalControllerContext);
+            properties.put("closeUrl", closeUrl);
+        } else {
+            properties = null;
+        }
+
+        return properties;
+    }
+
+
+    /**
+     * Get close URL.
+     * 
+     * @param portalControllerContext portal controller context
+     * @return close URL
+     * @throws PortletException
+     */
+    private String getCloseUrl(PortalControllerContext portalControllerContext) throws PortletException {
+        // Portlet request
+        PortletRequest request = portalControllerContext.getRequest();
+        // Nuxeo controller
+        NuxeoController nuxeoController = new NuxeoController(portalControllerContext);
+        // Portal URL factory
+        IPortalUrlFactory portalUrlFactory = nuxeoController.getPortalUrlFactory();
+        // Internationalization bundle
+        Bundle bundle = this.bundleFactory.getBundle(request.getLocale());
+
+        // Current Nuxeo document
+        Document document = this.getCurrentDoc(request, portalControllerContext.getResponse(), portalControllerContext.getPortletCtx());
+
+        // Window properties
+        Map<String, String> properties = new HashMap<>();
+
+        // Back URL
+        String backUrl = portalUrlFactory.getBackURL(portalControllerContext, false);
+        if (StringUtils.isNotEmpty(backUrl)) {
+            backUrl = backUrl.replace("/pagemarker", "/refresh/pagemarker");
+        } else {
+            // displaycontext = "menu" afin de réinitialiser le backpagemarker
+            backUrl = nuxeoController.getLink(document, "menu").getUrl();
+        }
+        properties.put("backURL", backUrl);
+        properties.put("osivia.title", bundle.getString("CLOSING"));
+        properties.put("id", document.getId());
+        properties.put("action", "close");
+
+        // URL
+        String url;
+        try {
+            url = portalUrlFactory.getStartPortletUrl(portalControllerContext, "osivia-services-onlyoffice-portletInstance", properties);
+        } catch (PortalException e) {
+            url = StringUtils.EMPTY;
+        }
+
+        return url;
+    }
+
 
     private String getLang(Locale locale) {
         return ONLYOFFICE_LANG;

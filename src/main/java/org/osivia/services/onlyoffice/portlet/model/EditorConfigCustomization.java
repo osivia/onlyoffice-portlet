@@ -10,7 +10,11 @@ public class EditorConfigCustomization {
     private boolean chat;
 
     @XmlElement
+    private boolean compactToolbar;
+
+    @XmlElement
     private EditorConfigCustomizationGoback goback;
+
 
     /**
      * @return the chat
@@ -19,7 +23,6 @@ public class EditorConfigCustomization {
         return chat;
     }
 
-
     /**
      * @param chat the chat to set
      */
@@ -27,6 +30,23 @@ public class EditorConfigCustomization {
         this.chat = chat;
     }
 
+    /**
+     * Getter for compactToolbar.
+     * 
+     * @return the compactToolbar
+     */
+    public boolean isCompactToolbar() {
+        return compactToolbar;
+    }
+
+    /**
+     * Setter for compactToolbar.
+     * 
+     * @param compactToolbar the compactToolbar to set
+     */
+    public void setCompactToolbar(boolean compactToolbar) {
+        this.compactToolbar = compactToolbar;
+    }
 
     /**
      * Getter for goback.
@@ -37,7 +57,6 @@ public class EditorConfigCustomization {
         return goback;
     }
 
-
     /**
      * Setter for goback.
      *
@@ -46,6 +65,5 @@ public class EditorConfigCustomization {
     public void setGoback(EditorConfigCustomizationGoback goback) {
         this.goback = goback;
     }
-
 
 }

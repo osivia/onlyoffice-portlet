@@ -1,5 +1,7 @@
 package org.osivia.services.onlyoffice.portlet.service;
 
+import java.util.Map;
+
 import javax.portlet.PortletContext;
 import javax.portlet.PortletException;
 import javax.portlet.PortletRequest;
@@ -21,6 +23,17 @@ public interface IOnlyofficeService {
      */
     public String getOnlyOfficeConfig(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext, String documentPath)
             throws PortletException;
+
+
+    /**
+     * Get toolbar properties.
+     * 
+     * @param portalControllerContext portal controller context
+     * @return toolbar properties
+     * @throws PortletException
+     */
+    Map<String, String> getToolbarProperties(PortalControllerContext portalControllerContext) throws PortletException;
+
 
     /**
      * Call nuxeo cache for current editing users.
