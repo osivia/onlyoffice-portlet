@@ -5,11 +5,11 @@
 	<version>4.7-SNAPSHOT</version>
 	<packaging>war</packaging>
 	
-	<name>Services OSIVIA - onlyoffice</name>
+	<name>Services OSIVIA - OnlyOffice</name>
 	
 	<properties>
         <!-- Toutatice -->
-        <toutatice.version>4.7.2</toutatice.version>
+        <toutatice.version>4.7-SNAPSHOT</toutatice.version>
 	</properties>
 	
 	<dependencies>
@@ -80,6 +80,28 @@
                 </configuration>
             </plugin>	        
 	
+            <!-- Less -->
+            <plugin>
+                <groupId>org.lesscss</groupId>
+                <artifactId>lesscss-maven-plugin</artifactId>
+                <version>1.7.0.1.1</version>
+                <configuration>
+                    <sourceDirectory>${project.basedir}/src/main/less</sourceDirectory>
+                    <outputDirectory>${project.basedir}/src/main/webapp/css</outputDirectory>
+                    <compress>true</compress>
+                    <includes>
+                        <include>*.less</include>
+                    </includes>
+                    <outputFileFormat>{fileName}.min.css</outputFileFormat>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
 	    </plugins>
     </build>
     
