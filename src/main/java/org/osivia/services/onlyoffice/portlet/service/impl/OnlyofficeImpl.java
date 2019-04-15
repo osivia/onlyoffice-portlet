@@ -1,5 +1,6 @@
 package org.osivia.services.onlyoffice.portlet.service.impl;
 
+import java.io.IOException;
 import java.security.Principal;
 import java.util.HashMap;
 import java.util.ListIterator;
@@ -16,6 +17,7 @@ import org.nuxeo.ecm.automation.client.model.Document;
 import org.nuxeo.ecm.automation.client.model.PropertyMap;
 import org.osivia.portal.api.Constants;
 import org.osivia.portal.api.PortalException;
+import org.osivia.portal.api.cms.FileMimeType;
 import org.osivia.portal.api.context.PortalControllerContext;
 import org.osivia.portal.api.directory.v2.DirServiceFactory;
 import org.osivia.portal.api.directory.v2.model.Person;
@@ -47,6 +49,8 @@ import fr.toutatice.portail.cms.nuxeo.api.cms.NuxeoDocumentContext;
 import fr.toutatice.portail.cms.nuxeo.api.cms.NuxeoPermissions;
 import fr.toutatice.portail.cms.nuxeo.api.cms.NuxeoPublicationInfos;
 import fr.toutatice.portail.cms.nuxeo.api.liveedit.OnlyofficeLiveEditHelper;
+import fr.toutatice.portail.cms.nuxeo.api.services.INuxeoCustomizer;
+import fr.toutatice.portail.cms.nuxeo.api.services.INuxeoService;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 
@@ -75,6 +79,9 @@ public class OnlyofficeImpl implements IOnlyofficeService {
     @Autowired
     private INotificationsService notificationsService;
 
+    /** Nuxeo service. */
+    @Autowired
+    private INuxeoService nuxeoService;
 
 
     public OnlyofficeImpl() {
@@ -243,11 +250,15 @@ public class OnlyofficeImpl implements IOnlyofficeService {
      * {@inheritDoc}
      */
     @Override
-    public Map<String, String> getToolbarProperties(PortalControllerContext portalControllerContext) throws PortletException {
+    public Map<String, String> getToolbarProperties(PortalControllerContext portalControllerContext) throws PortletException, IOException {
         // Portlet request
         PortletRequest request = portalControllerContext.getRequest();
         // Current window
         PortalWindow window = WindowFactory.getWindow(request);
+
+        // CMS customizer
+        INuxeoCustomizer customizer = this.nuxeoService.getCMSCustomizer();
+
         // Action
         String action = window.getProperty("action");
 
@@ -256,9 +267,24 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         if (StringUtils.isEmpty(action)) {
             properties = new HashMap<>();
 
-            // Current document title
+            // Current document
             Document document = this.getCurrentDoc(request, portalControllerContext.getResponse(), portalControllerContext.getPortletCtx());
+
+            // Document title
             properties.put("documentTitle", document.getTitle());
+
+            // Document file content;
+            PropertyMap fileContent = document.getProperties().getMap("file:content");
+            // File MIME type
+            FileMimeType fileMimeType;
+            if (fileContent == null) {
+                fileMimeType = null;
+            } else {
+                fileMimeType = customizer.getFileMimeType(fileContent.getString("mime-type"));
+            }
+            if (fileMimeType != null) {
+                properties.put("extension", fileMimeType.getExtension());
+            }
 
             // Close URL
             String closeUrl = this.getCloseUrl(portalControllerContext);

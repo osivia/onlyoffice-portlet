@@ -1,6 +1,55 @@
+@docx-color: #5170b5;
+@xlsx-color: #7e983f;
+@pptx-color: #c65d27;
+
+
 iframe[name="frameEditor"] {
     flex : 1;
     min-height: 600px;
+    width: 100%;
+}
+
+
+.onlyoffice-container {
+    > .onlyoffice-toolbar {
+        .navbar {
+            margin-bottom: 0;
+            
+            &[data-extension="doc"], &[data-extension="docx"], &[data-extension="odt"] {
+                background-color: @docx-color;
+                border-color: darken(@docx-color, 5%);
+            }
+            
+            &[data-extension="xls"], &[data-extension="xlsx"], &[data-extension="ods"] {
+                background-color: @xlsx-color;
+                border-color: darken(@xlsx-color, 5%);
+            }
+            
+            &[data-extension="ppt"], &[data-extension="pptx"], &[data-extension="odp"] {
+                background-color: @pptx-color;
+                border-color: darken(@pptx-color, 5%);
+            }
+            
+            .navbar-text, a {
+                color: fade(#fff, 85%);
+            }
+            
+            a {
+                &:hover, &:focus {
+                    color: #fff;
+                }
+            }
+        }
+    }
+    
+    > .onlyoffice-component {
+        display: flex;
+        flex: 1;
+        
+        > iframe {
+            min-height: auto;
+        }
+    }
 }
 
 
@@ -18,20 +67,5 @@ iframe[name="frameEditor"] {
         z-index: 9900;
         
         background-color: #f4f4f4;
-        
-        > .onlyoffice-toolbar {
-            .navbar {
-                margin-bottom: 0;
-            }
-        }
-        
-        > .onlyoffice-component {
-            display: flex;
-            flex: 1;
-            
-            > iframe {
-                min-height: auto;
-            }
-        }
     }
 }

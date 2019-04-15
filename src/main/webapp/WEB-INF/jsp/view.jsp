@@ -12,7 +12,7 @@
 
 <div class="onlyoffice-container">
     <div class="onlyoffice-toolbar">
-        <div class="navbar navbar-inverse navbar-static-top">
+        <div class="navbar navbar-inverse navbar-static-top" data-extension="${toolbarProperties['extension']}">
             <div class="container-fluid">
                 <div class="navbar-header hidden-xs">
                     <c:set var="title"><op:translate key="BACK_TEXT" /></c:set>
