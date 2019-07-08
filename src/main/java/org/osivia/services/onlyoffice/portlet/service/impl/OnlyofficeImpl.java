@@ -1,16 +1,14 @@
 package org.osivia.services.onlyoffice.portlet.service.impl;
 
-import java.security.Principal;
-import java.util.HashMap;
-import java.util.ListIterator;
-import java.util.Locale;
-import java.util.Map;
-
-import javax.portlet.PortletContext;
-import javax.portlet.PortletException;
-import javax.portlet.PortletRequest;
-import javax.portlet.PortletResponse;
-
+import fr.toutatice.portail.cms.nuxeo.api.INuxeoCommand;
+import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
+import fr.toutatice.portail.cms.nuxeo.api.cms.ExtendedDocumentInfos;
+import fr.toutatice.portail.cms.nuxeo.api.cms.NuxeoDocumentContext;
+import fr.toutatice.portail.cms.nuxeo.api.liveedit.OnlyofficeLiveEditHelper;
+import fr.toutatice.portail.cms.nuxeo.api.services.INuxeoCustomizer;
+import fr.toutatice.portail.cms.nuxeo.api.services.INuxeoService;
+import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.nuxeo.ecm.automation.client.model.Document;
 import org.nuxeo.ecm.automation.client.model.PropertyMap;
@@ -27,27 +25,24 @@ import org.osivia.portal.api.internationalization.IInternationalizationService;
 import org.osivia.portal.api.locator.Locator;
 import org.osivia.portal.api.notifications.INotificationsService;
 import org.osivia.portal.api.notifications.NotificationsType;
+import org.osivia.portal.api.urls.IPortalUrlFactory;
 import org.osivia.portal.api.windows.PortalWindow;
 import org.osivia.portal.api.windows.WindowFactory;
 import org.osivia.services.onlyoffice.portlet.command.GetUserJWTTokenCommand;
-import org.osivia.services.onlyoffice.portlet.model.EditorConfig;
-import org.osivia.services.onlyoffice.portlet.model.EditorConfigCustomization;
-import org.osivia.services.onlyoffice.portlet.model.EditorConfigCustomizationGoback;
-import org.osivia.services.onlyoffice.portlet.model.OnlyOfficeDocument;
-import org.osivia.services.onlyoffice.portlet.model.OnlyOfficeUser;
-import org.osivia.services.onlyoffice.portlet.model.OnlyofficeConfig;
+import org.osivia.services.onlyoffice.portlet.model.*;
 import org.osivia.services.onlyoffice.portlet.service.IOnlyofficeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import fr.toutatice.portail.cms.nuxeo.api.INuxeoCommand;
-import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
-import fr.toutatice.portail.cms.nuxeo.api.cms.ExtendedDocumentInfos;
-import fr.toutatice.portail.cms.nuxeo.api.cms.ExtendedDocumentInfos.LockStatus;
-import fr.toutatice.portail.cms.nuxeo.api.cms.NuxeoDocumentContext;
-import fr.toutatice.portail.cms.nuxeo.api.liveedit.OnlyofficeLiveEditHelper;
-import net.sf.json.JSONArray;
-import net.sf.json.JSONObject;
+import javax.activation.MimeType;
+import javax.activation.MimeTypeParseException;
+import javax.portlet.PortletContext;
+import javax.portlet.PortletException;
+import javax.portlet.PortletRequest;
+import javax.portlet.PortletResponse;
+import java.io.IOException;
+import java.security.Principal;
+import java.util.*;
 
 @Service
 public class OnlyofficeImpl implements IOnlyofficeService {
@@ -67,13 +62,22 @@ public class OnlyofficeImpl implements IOnlyofficeService {
 
     private final PersonService personService;
 
-    /** Internationalization bundle factory. */
+    /**
+     * Internationalization bundle factory.
+     */
     private final IBundleFactory bundleFactory;
 
-    /** Notifications service. */
+    /**
+     * Notifications service.
+     */
     @Autowired
     private INotificationsService notificationsService;
 
+    /**
+     * Nuxeo service.
+     */
+    @Autowired
+    private INuxeoService nuxeoService;
 
 
     public OnlyofficeImpl() {
@@ -112,14 +116,11 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         if (currentDoc == null) {
             String path = getWindowProperty(portletRequest, Constants.WINDOW_PROP_URI);
             NuxeoDocumentContext documentContext;
-            try {
-                documentContext = NuxeoController.getDocumentContext(portletRequest, portletResponse, portletContext, path);
-            } catch (PortletException e) {
-                throw new PortletException(e);
-            }
-            Document document = documentContext.getDoc();
-            nuxeoController.setCurrentDoc(document);
-            currentDoc = nuxeoController.getCurrentDoc();
+            documentContext = nuxeoController.getDocumentContext(path);
+
+            currentDoc = documentContext.getDoc();
+            nuxeoController.setCurrentDoc(currentDoc);
+
         }
         return currentDoc;
     }
@@ -127,7 +128,9 @@ public class OnlyofficeImpl implements IOnlyofficeService {
     private String getMode(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext, String documentPath)
             throws PortletException {
 
-        NuxeoDocumentContext documentContext = NuxeoController.getDocumentContext(portletRequest, portletResponse, portletContext, documentPath);
+        PortalControllerContext portalCtx = new PortalControllerContext(portletContext, portletRequest, portletResponse);
+        NuxeoController ctl = new NuxeoController(portalCtx);
+        NuxeoDocumentContext documentContext = ctl.getDocumentContext(documentPath);
 
         BasicPermissions permissions = documentContext.getPermissions(BasicPermissions.class);
         if (permissions.isEditableByUser()) {
@@ -187,44 +190,20 @@ public class OnlyofficeImpl implements IOnlyofficeService {
     }
 
     private EditorConfigCustomizationGoback getGoback(Bundle bundle, PortletRequest portletRequest, PortletResponse portletResponse,
-            PortletContext portletContext) {
+                                                      PortletContext portletContext) throws PortletException {
+        // Portal controller context
+        PortalControllerContext portalControllerContext = new PortalControllerContext(portletContext, portletRequest, portletResponse);
+
         EditorConfigCustomizationGoback goback = new EditorConfigCustomizationGoback();
+        goback.setBlank(false);
         goback.setText(bundle.getString("BACK_TEXT"));
 
-        NuxeoController nuxeoController = new NuxeoController(portletRequest, portletResponse, portletContext);
-
-        Document currentDoc = null;
-        try {
-            currentDoc = getCurrentDoc(portletRequest, portletResponse, portletContext);
-        } catch (PortletException e1) {
-            // No back url
-        }
-
-        PortalControllerContext pcc = new PortalControllerContext(portletContext, portletRequest, portletResponse);
-        Map<String, String> properties = new HashMap<>();
-
-        String backURL = nuxeoController.getPortalUrlFactory().getBackURL(nuxeoController.getPortalCtx(), false);
-        if (StringUtils.isNotEmpty(backURL)) {
-            backURL = backURL.replace("/pagemarker", "/refresh/pagemarker");
-        } else {
-            // displaycontext = "menu" afin de réinitialiser le backpagemarker
-            backURL = nuxeoController.getLink(currentDoc, "menu").getUrl();
-        }
-        properties.put("backURL", backURL);
-        properties.put("osivia.title",bundle.getString("CLOSING"));
-        properties.put("id", currentDoc.getId());
-        properties.put("action", "close");
-
-        String toCloseUrl = "";
-        try {
-            toCloseUrl = nuxeoController.getPortalUrlFactory().getStartPortletUrl(pcc ,"osivia-services-onlyoffice-portletInstance", properties);
-        } catch (PortalException e) {
-            // No back url
-        }
-
+        String toCloseUrl = this.getCloseUrl(portalControllerContext);
         goback.setUrl(toCloseUrl);
+
         return goback;
     }
+
 
     @Override
     public String getOnlyOfficeConfig(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext, String documentPath)
@@ -234,14 +213,14 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         OnlyOfficeDocument onlyOfficeDocument = new OnlyOfficeDocument();
         onlyOfficeDocument.setFileType(getDocFileType(portletRequest, portletResponse, portletContext));
         onlyOfficeDocument.setKey(getDocKey(portletRequest, portletResponse, portletContext));
-        
+
         // LBI #1913 - Escape quotes in title and url
         String escapeTitle = getDocTitle(portletRequest, portletResponse, portletContext);
         onlyOfficeDocument.setTitle(escapeTitle.replaceAll("'", " "));
-        
+
         String escapeUrl = getDocUrl(portletRequest, portletResponse, portletContext);
         onlyOfficeDocument.setUrl(escapeUrl.replaceAll("'", ""));
-        
+
         onlyOfficeConfig.setDocument(onlyOfficeDocument);
         onlyOfficeConfig.setDocumentType(getDocumentType(portletRequest, portletResponse, portletContext));
 
@@ -252,6 +231,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         onlyOfficeEditorConfig.setLang(getLang(portletRequest.getLocale()));
         EditorConfigCustomization editorConfigCustomization = new EditorConfigCustomization();
         editorConfigCustomization.setChat(true);
+        editorConfigCustomization.setCompactToolbar(false);
         Bundle bundle = bundleFactory.getBundle(portletRequest.getLocale());
         editorConfigCustomization.setGoback(getGoback(bundle, portletRequest, portletResponse, portletContext));
         onlyOfficeEditorConfig.setCustomization(editorConfigCustomization);
@@ -262,6 +242,122 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         return onlyOfficeConfigJson.toString();
     }
 
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, String> getToolbarProperties(PortalControllerContext portalControllerContext) throws PortletException, IOException {
+        // Portlet request
+        PortletRequest request = portalControllerContext.getRequest();
+        // Current window
+        PortalWindow window = WindowFactory.getWindow(request);
+
+        // CMS customizer
+        INuxeoCustomizer customizer = this.nuxeoService.getCMSCustomizer();
+
+        // Action
+        String action = window.getProperty("action");
+
+        // Toolbar properties
+        Map<String, String> properties;
+        if (StringUtils.isEmpty(action)) {
+            properties = new HashMap<>();
+
+            // Current document
+            Document document = this.getCurrentDoc(request, portalControllerContext.getResponse(), portalControllerContext.getPortletCtx());
+
+            // Document title
+            properties.put("documentTitle", document.getTitle());
+
+            // Document file content;
+            PropertyMap fileContent = document.getProperties().getMap("file:content");
+            // File MIME type
+            MimeType mimeType;
+            if (fileContent == null) {
+                mimeType = null;
+            } else {
+                try {
+                    mimeType = new MimeType(fileContent.getString("mime-type"));
+                } catch (MimeTypeParseException e) {
+                    mimeType = null;
+                }
+            }
+
+            if (mimeType != null) {
+                String extension;
+                String subType = mimeType.getSubType();
+                if (Arrays.asList("msword", "vnd.openxmlformats-officedocument.wordprocessingml.document", "vnd.oasis.opendocument.text").contains(subType)) {
+                    extension = "docx";
+                } else if (Arrays.asList("vnd.ms-excel", "vnd.ms-excel.sheet.macroenabled.12", "vnd.openxmlformats-officedocument.spreadsheetml.sheet", "vnd.oasis.opendocument.spreadsheet").contains(subType)) {
+                    extension = "xlsx";
+                } else if (Arrays.asList("vnd.ms-powerpoint", "vnd.openxmlformats-officedocument.presentationml.presentation", "vnd.oasis.opendocument.presentation").contains(subType)) {
+                    extension = "pptx";
+                } else {
+                    extension = null;
+                }
+                properties.put("extension", extension);
+            }
+
+            // Close URL
+            String closeUrl = this.getCloseUrl(portalControllerContext);
+            properties.put("closeUrl", closeUrl);
+        } else {
+            properties = null;
+        }
+
+        return properties;
+    }
+
+
+    /**
+     * Get close URL.
+     *
+     * @param portalControllerContext portal controller context
+     * @return close URL
+     * @throws PortletException
+     */
+    private String getCloseUrl(PortalControllerContext portalControllerContext) throws PortletException {
+        // Portlet request
+        PortletRequest request = portalControllerContext.getRequest();
+        // Nuxeo controller
+        NuxeoController nuxeoController = new NuxeoController(portalControllerContext);
+        // Portal URL factory
+        IPortalUrlFactory portalUrlFactory = nuxeoController.getPortalUrlFactory();
+        // Internationalization bundle
+        Bundle bundle = this.bundleFactory.getBundle(request.getLocale());
+
+        // Current Nuxeo document
+        Document document = this.getCurrentDoc(request, portalControllerContext.getResponse(), portalControllerContext.getPortletCtx());
+
+        // Window properties
+        Map<String, String> properties = new HashMap<>();
+
+        // Back URL
+        String backUrl = portalUrlFactory.getBackURL(portalControllerContext, false);
+        if (StringUtils.isNotEmpty(backUrl)) {
+            backUrl = backUrl.replace("/pagemarker", "/refresh/pagemarker");
+        } else {
+            // displaycontext = "menu" afin de réinitialiser le backpagemarker
+            backUrl = nuxeoController.getLink(document, "menu").getUrl();
+        }
+        properties.put("backURL", backUrl);
+        properties.put("osivia.title", bundle.getString("CLOSING"));
+        properties.put("id", document.getId());
+        properties.put("action", "close");
+
+        // URL
+        String url;
+        try {
+            url = portalUrlFactory.getStartPortletUrl(portalControllerContext, "osivia-services-onlyoffice-portletInstance", properties);
+        } catch (PortalException e) {
+            url = StringUtils.EMPTY;
+        }
+
+        return url;
+    }
+
+
     private String getLang(Locale locale) {
         return ONLYOFFICE_LANG;
     }
@@ -271,7 +367,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         OnlyOfficeUser user = new OnlyOfficeUser();
         String id = ANONYMOUS_LOGIN;
         // LBI #1732 gestion user anonyme
-        if(userPrincipal != null) {
+        if (userPrincipal != null) {
             id = userPrincipal.getName();
 
             Person person = personService.getPerson(id);
@@ -282,8 +378,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
             } else {
                 user.setName(id);
             }
-        }
-        else {
+        } else {
             user.setName(ANONYMOUS_NAME);
         }
 
@@ -308,12 +403,12 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         INuxeoCommand command = new IsDocumentCurrentlyEditedCommand(uuid);
         JSONObject info = (JSONObject) controller.executeNuxeoCommand(command);
 
-        if(info!= null && info.containsKey("isCurrentlyEdited")) {
+        if (info != null && info.containsKey("isCurrentlyEdited")) {
 
-            if(info.getBoolean("isCurrentlyEdited")) {
-                JSONObject currentlyEditedEntry = 	info.getJSONObject("currentlyEditedEntry");
+            if (info.getBoolean("isCurrentlyEdited")) {
+                JSONObject currentlyEditedEntry = info.getJSONObject("currentlyEditedEntry");
 
-                if(currentlyEditedEntry != null) {
+                if (currentlyEditedEntry != null) {
                     JSONArray usernamesArray = currentlyEditedEntry.getJSONArray("username");
 
                     if (usernamesArray != null) {
@@ -323,8 +418,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
 
                             if (principal != null && StringUtils.equals(principal.getName(), userName)) {
                                 editedByMe = true;
-                            }
-                            else {
+                            } else {
                                 editedByOthers = true;
                             }
 
@@ -335,7 +429,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
 
         }
 
-        if(editedByMe && !editedByOthers) {
+        if (editedByMe && !editedByOthers) {
             return true;
         } else {
             return false;
@@ -356,12 +450,11 @@ public class OnlyofficeImpl implements IOnlyofficeService {
 
         Bundle bundle = bundleFactory.getBundle(nuxeoController.getRequest().getLocale());
 
-        if(info.isCurrentlyEdited()) {
+        if (info.isCurrentlyEdited()) {
 
             notificationsService.addSimpleNotification(nuxeoController.getPortalCtx(), bundle.getString("CURRENTLY_EDITED"), NotificationsType.WARNING);
             return false;
-        }
-        else if(info.getLockStatus() != null && info.getLockStatus().equals(LockStatus.locked)) {
+        } else if (info.getLockStatus() != null && info.getLockStatus().equals(ExtendedDocumentInfos.LockStatus.locked)) {
 
             notificationsService.addSimpleNotification(nuxeoController.getPortalCtx(), bundle.getString("CURRENTLY_LOCKED"), NotificationsType.WARNING);
             return false;
@@ -384,7 +477,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         JSONObject info = (JSONObject) nuxeoController.executeNuxeoCommand(command);
         String error = info.getString("error");
 
-        if("1".equals(error)) {
+        if ("1".equals(error)) {
             Bundle bundle = bundleFactory.getBundle(nuxeoController.getRequest().getLocale());
             notificationsService.addSimpleNotification(nuxeoController.getPortalCtx(), bundle.getString("LOCK_ERROR"), NotificationsType.ERROR);
         }

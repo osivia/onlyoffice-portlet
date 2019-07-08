@@ -5,11 +5,22 @@ import javax.xml.bind.annotation.XmlElement;
 public class EditorConfigCustomizationGoback {
 
     @XmlElement
+    private boolean blank;
+
+    @XmlElement
     private String text;
 
     @XmlElement
     private String url;
 
+
+    public boolean isBlank() {
+        return blank;
+    }
+
+    public void setBlank(boolean blank) {
+        this.blank = blank;
+    }
 
     /**
      * Getter for text.

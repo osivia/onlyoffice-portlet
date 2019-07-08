@@ -11,7 +11,7 @@
         </transaction>
         
         <header-content>
-            <link rel="stylesheet" href="/css/onlyoffice-integration.css" />
+            <link rel="stylesheet" href="/css/onlyoffice-integration.min.css" />
         </header-content>
         
     </portlet>

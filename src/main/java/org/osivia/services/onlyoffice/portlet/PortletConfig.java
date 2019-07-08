@@ -13,6 +13,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
 import org.springframework.web.servlet.view.JstlView;
 
+import fr.toutatice.portail.cms.nuxeo.api.services.INuxeoService;
+
 /**
  * @author Loïc Billon
  *
@@ -58,4 +60,16 @@ public class PortletConfig {
     public INotificationsService getNotificationService() {
         return Locator.findMBean(INotificationsService.class, INotificationsService.MBEAN_NAME);
     }
+
+
+    /**
+     * Get Nuxeo service.
+     * 
+     * @return Nuxeo service
+     */
+    @Bean
+    public INuxeoService getNuxeoService() {
+        return Locator.findMBean(INuxeoService.class, INuxeoService.MBEAN_NAME);
+    }
+
 }

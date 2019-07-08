@@ -2,10 +2,10 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.osivia.services</groupId>
     <artifactId>osivia-services-onlyoffice</artifactId>
-    <version>4.4-SNAPSHOT</version>
+	<version>4.4-SNAPSHOT</version>
     <packaging>war</packaging>
 
-    <name>Services OSIVIA - onlyoffice</name>
+	<name>Services OSIVIA - OnlyOffice</name>
 
     <properties>
         <!-- Toutatice -->
@@ -33,8 +33,8 @@
                 <version>3.3</version>
                 <configuration>
                     <encoding>UTF-8</encoding>
-                    <source>1.7</source>
-                    <target>1.7</target>
+	                <source>1.7</source>
+	                <target>1.7</target>
                 </configuration>
             </plugin>
 
@@ -69,25 +69,39 @@
                 </configuration>
             </plugin>
 
-            <!-- AntRun -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <version>1.8</version>
-            </plugin>
-
-            <!-- Eclipse -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-eclipse-plugin</artifactId>
-                <version>2.10</version>
+            <!-- Disable strict javadoc checking since java8 -->
+	        <plugin>
+	            <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
                 <configuration>
-                    <downloadJavadocs>true</downloadJavadocs>
-                    <downloadSources>true</downloadSources>
-                    <wtpversion>2.0</wtpversion>
+                    <additionalOptions>
+                        <additionalOption>-Xdoclint:none</additionalOption>
+                    </additionalOptions>
                 </configuration>
-            </plugin>
-
+	        </plugin>
+	
+            <!-- Less -->
+	        <plugin>
+                <groupId>org.lesscss</groupId>
+                <artifactId>lesscss-maven-plugin</artifactId>
+                <version>1.7.0.1.1</version>
+	            <configuration>
+                    <sourceDirectory>${project.basedir}/src/main/less</sourceDirectory>
+                    <outputDirectory>${project.basedir}/src/main/webapp/css</outputDirectory>
+                    <compress>true</compress>
+                    <includes>
+                        <include>*.less</include>
+                    </includes>
+                    <outputFileFormat>{fileName}.min.css</outputFileFormat>
+	            </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+	        </plugin>
         </plugins>
     </build>
 

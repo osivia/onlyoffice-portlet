@@ -1,6 +1,7 @@
 package org.osivia.services.onlyoffice.portlet.controller;
 
 import java.io.IOException;
+import java.util.Map;
 
 import javax.annotation.PostConstruct;
 import javax.portlet.ActionRequest;
@@ -163,6 +164,24 @@ public class OnlyofficeController extends CMSPortlet implements PortletContextAw
         } else {
             return null;
         }
+    }
+
+
+    /**
+     * Get toolbar properties model attribute.
+     * 
+     * @param request portlet request
+     * @param response portlet response
+     * @return toolbar properties
+     * @throws PortletException
+     * @throws IOException
+     */
+    @ModelAttribute("toolbarProperties")
+    public Map<String, String> getToolbarProperties(PortletRequest request, PortletResponse response) throws PortletException, IOException {
+        // Portal controller context
+        PortalControllerContext portalControllerContext = new PortalControllerContext(this.portletContext, request, response);
+
+        return this.onlyofficeService.getToolbarProperties(portalControllerContext);
     }
 
 }
