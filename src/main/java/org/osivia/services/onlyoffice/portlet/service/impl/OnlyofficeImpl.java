@@ -9,6 +9,7 @@ import fr.toutatice.portail.cms.nuxeo.api.services.INuxeoCustomizer;
 import fr.toutatice.portail.cms.nuxeo.api.services.INuxeoService;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
+import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.nuxeo.ecm.automation.client.model.Document;
 import org.nuxeo.ecm.automation.client.model.PropertyMap;
@@ -125,20 +126,42 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         return currentDoc;
     }
 
-    private String getMode(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext, String documentPath)
+
+    /**
+     * Get editor opening mode
+     *
+     * @param request        portlet request
+     * @param response       portlet response
+     * @param portletContext portlet context
+     * @param path           document path
+     * @return mode
+     * @throws PortletException
+     */
+    private String getMode(PortletRequest request, PortletResponse response, PortletContext portletContext, String path)
             throws PortletException {
-
-        PortalControllerContext portalCtx = new PortalControllerContext(portletContext, portletRequest, portletResponse);
+        // Portal controller context
+        PortalControllerContext portalCtx = new PortalControllerContext(portletContext, request, response);
+        // Nuxeo controller
         NuxeoController ctl = new NuxeoController(portalCtx);
-        NuxeoDocumentContext documentContext = ctl.getDocumentContext(documentPath);
 
-        BasicPermissions permissions = documentContext.getPermissions(BasicPermissions.class);
-        if (permissions.isEditableByUser()) {
-            return "edit";
-        } else {
-            return "view";
+        // Window
+        PortalWindow window = WindowFactory.getWindow(request);
+
+        // Editor opening mode
+        String mode = window.getProperty("osivia.onlyoffice.mode");
+
+        if (!"view".equals(mode)) {
+            // Document context
+            NuxeoDocumentContext documentContext = ctl.getDocumentContext(path);
+            // Permissions
+            BasicPermissions permissions = documentContext.getPermissions(BasicPermissions.class);
+
+            mode = BooleanUtils.toString(permissions.isEditableByUser(), "edit", "view");
         }
+
+        return mode;
     }
+
 
     private String getDocUrl(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext) throws PortletException {
 
