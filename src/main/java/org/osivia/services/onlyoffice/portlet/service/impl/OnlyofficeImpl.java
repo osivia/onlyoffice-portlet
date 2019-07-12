@@ -5,7 +5,6 @@ import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
 import fr.toutatice.portail.cms.nuxeo.api.cms.ExtendedDocumentInfos;
 import fr.toutatice.portail.cms.nuxeo.api.cms.NuxeoDocumentContext;
 import fr.toutatice.portail.cms.nuxeo.api.liveedit.OnlyofficeLiveEditHelper;
-import fr.toutatice.portail.cms.nuxeo.api.services.INuxeoCustomizer;
 import fr.toutatice.portail.cms.nuxeo.api.services.INuxeoService;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
@@ -35,15 +34,15 @@ import org.osivia.services.onlyoffice.portlet.service.IOnlyofficeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.activation.MimeType;
-import javax.activation.MimeTypeParseException;
 import javax.portlet.PortletContext;
 import javax.portlet.PortletException;
 import javax.portlet.PortletRequest;
 import javax.portlet.PortletResponse;
-import java.io.IOException;
 import java.security.Principal;
-import java.util.*;
+import java.util.HashMap;
+import java.util.ListIterator;
+import java.util.Locale;
+import java.util.Map;
 
 @Service
 public class OnlyofficeImpl implements IOnlyofficeService {
@@ -228,6 +227,29 @@ public class OnlyofficeImpl implements IOnlyofficeService {
     }
 
 
+    /**
+     * Get logo.
+     *
+     * @param request portlet request
+     * @return logo
+     */
+    private EditorConfigCustomizationLogo getLogo(PortletRequest request) {
+        // Logo
+        EditorConfigCustomizationLogo logo = new EditorConfigCustomizationLogo();
+
+        // Image
+        logo.setImage(null);
+
+        // Image embedded
+        logo.setImageEmbedded(null);
+
+        // URL
+        logo.setUrl(null);
+
+        return logo;
+    }
+
+
     @Override
     public String getOnlyOfficeConfig(PortletRequest portletRequest, PortletResponse portletResponse, PortletContext portletContext, String documentPath)
             throws PortletException {
@@ -257,79 +279,13 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         editorConfigCustomization.setCompactToolbar(false);
         Bundle bundle = bundleFactory.getBundle(portletRequest.getLocale());
         editorConfigCustomization.setGoback(getGoback(bundle, portletRequest, portletResponse, portletContext));
+        editorConfigCustomization.setLogo(this.getLogo(portletRequest));
         onlyOfficeEditorConfig.setCustomization(editorConfigCustomization);
         onlyOfficeConfig.setEditorConfig(onlyOfficeEditorConfig);
 
         JSONObject onlyOfficeConfigJson = JSONObject.fromObject(onlyOfficeConfig);
 
         return onlyOfficeConfigJson.toString();
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Map<String, String> getToolbarProperties(PortalControllerContext portalControllerContext) throws PortletException, IOException {
-        // Portlet request
-        PortletRequest request = portalControllerContext.getRequest();
-        // Current window
-        PortalWindow window = WindowFactory.getWindow(request);
-
-        // CMS customizer
-        INuxeoCustomizer customizer = this.nuxeoService.getCMSCustomizer();
-
-        // Action
-        String action = window.getProperty("action");
-
-        // Toolbar properties
-        Map<String, String> properties;
-        if (StringUtils.isEmpty(action)) {
-            properties = new HashMap<>();
-
-            // Current document
-            Document document = this.getCurrentDoc(request, portalControllerContext.getResponse(), portalControllerContext.getPortletCtx());
-
-            // Document title
-            properties.put("documentTitle", document.getTitle());
-
-            // Document file content;
-            PropertyMap fileContent = document.getProperties().getMap("file:content");
-            // File MIME type
-            MimeType mimeType;
-            if (fileContent == null) {
-                mimeType = null;
-            } else {
-                try {
-                    mimeType = new MimeType(fileContent.getString("mime-type"));
-                } catch (MimeTypeParseException e) {
-                    mimeType = null;
-                }
-            }
-
-            if (mimeType != null) {
-                String extension;
-                String subType = mimeType.getSubType();
-                if (Arrays.asList("msword", "vnd.openxmlformats-officedocument.wordprocessingml.document", "vnd.oasis.opendocument.text").contains(subType)) {
-                    extension = "docx";
-                } else if (Arrays.asList("vnd.ms-excel", "vnd.ms-excel.sheet.macroenabled.12", "vnd.openxmlformats-officedocument.spreadsheetml.sheet", "vnd.oasis.opendocument.spreadsheet").contains(subType)) {
-                    extension = "xlsx";
-                } else if (Arrays.asList("vnd.ms-powerpoint", "vnd.openxmlformats-officedocument.presentationml.presentation", "vnd.oasis.opendocument.presentation").contains(subType)) {
-                    extension = "pptx";
-                } else {
-                    extension = null;
-                }
-                properties.put("extension", extension);
-            }
-
-            // Close URL
-            String closeUrl = this.getCloseUrl(portalControllerContext);
-            properties.put("closeUrl", closeUrl);
-        } else {
-            properties = null;
-        }
-
-        return properties;
     }
 
 

@@ -15,6 +15,12 @@ public class EditorConfigCustomization {
     @XmlElement
     private EditorConfigCustomizationGoback goback;
 
+    /**
+     * Changes the image file at the top left corner of the Editor header. The recommended image height is 20 pixels.
+     */
+    @XmlElement
+    private EditorConfigCustomizationLogo logo;
+
 
     /**
      * @return the chat
@@ -66,4 +72,11 @@ public class EditorConfigCustomization {
         this.goback = goback;
     }
 
+    public EditorConfigCustomizationLogo getLogo() {
+        return logo;
+    }
+
+    public void setLogo(EditorConfigCustomizationLogo logo) {
+        this.logo = logo;
+    }
 }
