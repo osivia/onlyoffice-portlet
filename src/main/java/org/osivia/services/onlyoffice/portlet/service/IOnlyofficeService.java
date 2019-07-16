@@ -1,16 +1,14 @@
 package org.osivia.services.onlyoffice.portlet.service;
 
-import java.io.IOException;
-import java.util.Map;
+import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
+import org.osivia.portal.api.context.PortalControllerContext;
 
 import javax.portlet.PortletContext;
 import javax.portlet.PortletException;
 import javax.portlet.PortletRequest;
 import javax.portlet.PortletResponse;
-
-import org.osivia.portal.api.context.PortalControllerContext;
-
-import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
+import java.io.IOException;
+import java.util.Map;
 
 public interface IOnlyofficeService {
 
@@ -28,7 +26,7 @@ public interface IOnlyofficeService {
 
     /**
      * Get toolbar properties.
-     * 
+     *
      * @param portalControllerContext portal controller context
      * @return toolbar properties
      * @throws PortletException
@@ -66,5 +64,14 @@ public interface IOnlyofficeService {
      */
     public void lockTemporary(NuxeoController nuxeoController) throws PortletException;
 
+
+    /**
+     * Get close redirection URL.
+     *
+     * @param portalControllerContext portal controller context
+     * @param documentId              document identifier
+     * @return URL
+     */
+    String getCloseRedirectionUrl(PortalControllerContext portalControllerContext, String documentId) throws PortletException;
 
 }

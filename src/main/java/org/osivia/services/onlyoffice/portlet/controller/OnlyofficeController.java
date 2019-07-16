@@ -1,19 +1,7 @@
 package org.osivia.services.onlyoffice.portlet.controller;
 
-import java.io.IOException;
-import java.util.Map;
-
-import javax.annotation.PostConstruct;
-import javax.portlet.ActionRequest;
-import javax.portlet.ActionResponse;
-import javax.portlet.PortletConfig;
-import javax.portlet.PortletContext;
-import javax.portlet.PortletException;
-import javax.portlet.PortletRequest;
-import javax.portlet.PortletResponse;
-import javax.portlet.RenderRequest;
-import javax.portlet.RenderResponse;
-
+import fr.toutatice.portail.cms.nuxeo.api.CMSPortlet;
+import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
 import org.apache.commons.lang.StringUtils;
 import org.osivia.portal.api.Constants;
 import org.osivia.portal.api.context.PortalControllerContext;
@@ -29,8 +17,10 @@ import org.springframework.web.portlet.bind.annotation.RenderMapping;
 import org.springframework.web.portlet.context.PortletConfigAware;
 import org.springframework.web.portlet.context.PortletContextAware;
 
-import fr.toutatice.portail.cms.nuxeo.api.CMSPortlet;
-import fr.toutatice.portail.cms.nuxeo.api.NuxeoController;
+import javax.annotation.PostConstruct;
+import javax.portlet.*;
+import java.io.IOException;
+import java.util.Map;
 
 /**
  * OnlyofficeController
@@ -87,12 +77,10 @@ public class OnlyofficeController extends CMSPortlet implements PortletContextAw
 
     @RenderMapping
     public String view(RenderRequest request, RenderResponse response) throws PortletException {
-
         PortalWindow window = WindowFactory.getWindow(request);
         String action = window.getProperty("action");
 
         if(StringUtils.isNotEmpty(action) && "close".equals(action)) {
-
             return CLOSE_VIEW;
         }
 
@@ -109,41 +97,39 @@ public class OnlyofficeController extends CMSPortlet implements PortletContextAw
             }
         }
 
-
         return DEFAULT_VIEW;
     }
 
 
     @ActionMapping(params = "action=checkClosed")
-    public void checkClosed(ActionRequest request, ActionResponse response) {
-
+    public void checkClosed(ActionRequest request, ActionResponse response) throws PortletException {
+        // Portal controller context
+        PortalControllerContext portalControllerContext = new PortalControllerContext(this.portletContext, request, response);
+        // Window
         PortalWindow window = WindowFactory.getWindow(request);
-        String backUrl = window.getProperty("backURL");
-
-        PortalControllerContext pcc = new PortalControllerContext(portletContext, request, response);
 
         try {
-            String id = window.getProperty("id");
-            boolean waitForRefresh = false;
-            int timeout = 10, i=0;
+            // Document identifier
+            String documentId = window.getProperty("id");
 
+            boolean waitForRefresh;
+            int timeout = 10, i = 0;
             do {
-                waitForRefresh = onlyofficeService.waitForRefresh(pcc, id);
+                waitForRefresh = onlyofficeService.waitForRefresh(portalControllerContext, documentId);
                 i++;
                 Thread.sleep(1000);
-
             }
             // While the doc is not modified and i is below the timeout
-            while(waitForRefresh && i < timeout);
+            while (waitForRefresh && i < timeout);
 
-            if (StringUtils.isNotEmpty(backUrl)) {
-                response.sendRedirect(backUrl);
+            // Redirection URL
+            String redirectionUrl = this.onlyofficeService.getCloseRedirectionUrl(portalControllerContext, documentId);
+            if (StringUtils.isNotEmpty(redirectionUrl)) {
+                response.sendRedirect(redirectionUrl);
             }
-
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
-
     }
 
 

@@ -1,19 +1,21 @@
 /**
- * 
+ *
  */
 package org.osivia.services.onlyoffice.portlet;
 
+import fr.toutatice.portail.cms.nuxeo.api.services.INuxeoService;
+import org.osivia.portal.api.directory.v2.DirServiceFactory;
+import org.osivia.portal.api.directory.v2.service.PersonService;
 import org.osivia.portal.api.internationalization.IBundleFactory;
 import org.osivia.portal.api.internationalization.IInternationalizationService;
 import org.osivia.portal.api.locator.Locator;
 import org.osivia.portal.api.notifications.INotificationsService;
+import org.osivia.portal.api.urls.IPortalUrlFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
 import org.springframework.web.servlet.view.JstlView;
-
-import fr.toutatice.portail.cms.nuxeo.api.services.INuxeoService;
 
 /**
  * @author Loïc Billon
@@ -37,7 +39,18 @@ public class PortletConfig {
         viewResolver.setSuffix(".jsp");
         return viewResolver;
     }
-    
+
+
+    /**
+     * Get portal URL factory.
+     * @return portal URL factory
+     */
+    @Bean
+    public IPortalUrlFactory getPortalUrlFactory() {
+        return Locator.findMBean(IPortalUrlFactory.class, IPortalUrlFactory.MBEAN_NAME);
+    }
+
+
     /**
      * Get bundle factory.
      *
@@ -53,7 +66,7 @@ public class PortletConfig {
 
     /**
      * Get notifications service.
-     * 
+     *
      * @return notification service
      */
     @Bean
@@ -64,12 +77,22 @@ public class PortletConfig {
 
     /**
      * Get Nuxeo service.
-     * 
+     *
      * @return Nuxeo service
      */
     @Bean
     public INuxeoService getNuxeoService() {
         return Locator.findMBean(INuxeoService.class, INuxeoService.MBEAN_NAME);
+    }
+
+
+    /**
+     * Get person service.
+     * @return person service
+     */
+    @Bean
+    public PersonService getPersonService() {
+        return DirServiceFactory.getService(PersonService.class);
     }
 
 }
