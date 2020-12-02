@@ -253,6 +253,8 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         PortletRequest request = portalControllerContext.getRequest();
         // Current window
         PortalWindow window = WindowFactory.getWindow(request);
+        // Internationalization bundle
+        Bundle bundle = this.bundleFactory.getBundle(request.getLocale());
 
         // CMS customizer
         INuxeoCustomizer customizer = this.nuxeoService.getCMSCustomizer();

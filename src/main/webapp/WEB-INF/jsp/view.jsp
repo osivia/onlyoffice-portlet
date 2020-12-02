@@ -23,16 +23,12 @@
                 </div>
                 
                 <p class="navbar-text hidden-xs">
-                    <span>${toolbarProperties['documentTitle']}</span>
+                    <span><op:translate key="ONLYOFFICE_TOOLBAR_TITLE"/></span>
                 </p>
                 
-                <ul class="nav navbar-nav navbar-right">
-                    <li>
-                        <a href="${toolbarProperties['closeUrl']}" class="no-ajax-link">
-                            <span><op:translate key="BACK_TEXT" /></span>
-                        </a>
-                    </li>
-                </ul>
+                <a href="${toolbarProperties['closeUrl']}" class="btn btn-login navbar-btn no-ajax-link">
+                    <span><op:translate key="BACK_TEXT" /></span>
+                </a>
             </div>
         </div>
     </div>
