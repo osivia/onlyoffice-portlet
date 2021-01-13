@@ -201,6 +201,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
 
         String toCloseUrl = this.getCloseUrl(portalControllerContext);
         goback.setUrl(toCloseUrl);
+        goback.setBlank(false);
 
         return goback;
     }
