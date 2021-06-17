@@ -26,6 +26,9 @@ public class OnlyofficeConfig {
 
     @XmlElement
     private String type;
+    
+    @XmlElement
+    private String token;
 
 
     /**
@@ -127,4 +130,15 @@ public class OnlyofficeConfig {
         this.type = type;
     }
 
+
+	public String getToken() {
+		return token;
+	}
+
+
+	public void setToken(String token) {
+		this.token = token;
+	}
+
+    
 }

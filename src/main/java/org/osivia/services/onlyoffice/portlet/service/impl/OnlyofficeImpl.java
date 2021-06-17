@@ -31,13 +31,18 @@ import org.osivia.services.onlyoffice.portlet.command.GetUserJWTTokenCommand;
 import org.osivia.services.onlyoffice.portlet.model.*;
 import org.osivia.services.onlyoffice.portlet.service.IOnlyofficeService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 
 import javax.portlet.PortletContext;
 import javax.portlet.PortletException;
 import javax.portlet.PortletRequest;
 import javax.portlet.PortletResponse;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.security.Principal;
 import java.util.HashMap;
 import java.util.ListIterator;
@@ -47,6 +52,9 @@ import java.util.Map;
 @Service
 public class OnlyofficeImpl implements IOnlyofficeService {
 
+	@Value("#{systemProperties['osivia.onlyoffice.token.secret'] ?: null}")
+	private String secret;
+	
 
     private static final String ANONYMOUS_NAME = "Utilisateur invité";
 
@@ -225,6 +233,18 @@ public class OnlyofficeImpl implements IOnlyofficeService {
 
         onlyOfficeConfig.setDocument(onlyOfficeDocument);
         onlyOfficeConfig.setDocumentType(getDocumentType(portletRequest, portletResponse, portletContext));
+
+        
+        if(secret != null) {
+			try {
+				Algorithm algorithm = Algorithm.HMAC256("secret");
+				String token = JWT.create().sign(algorithm);
+		        onlyOfficeConfig.setToken(token);
+		        
+			} catch (IllegalArgumentException | UnsupportedEncodingException e) {
+				throw new PortletException(e);
+			}
+        }
 
         EditorConfig onlyOfficeEditorConfig = new EditorConfig();
         onlyOfficeEditorConfig.setCallbackUrl(getCallbackUrl(portletRequest, portletResponse, portletContext));
