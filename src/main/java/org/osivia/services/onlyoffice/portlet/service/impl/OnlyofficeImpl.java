@@ -14,6 +14,7 @@ import org.nuxeo.ecm.automation.client.model.Document;
 import org.nuxeo.ecm.automation.client.model.PropertyMap;
 import org.osivia.portal.api.Constants;
 import org.osivia.portal.api.PortalException;
+import org.osivia.portal.api.cache.services.CacheInfo;
 import org.osivia.portal.api.cms.impl.BasicPermissions;
 import org.osivia.portal.api.context.PortalControllerContext;
 import org.osivia.portal.api.directory.v2.DirServiceFactory;
@@ -116,7 +117,7 @@ public class OnlyofficeImpl implements IOnlyofficeService {
         if (currentDoc == null) {
             String path = getWindowProperty(portletRequest, Constants.WINDOW_PROP_URI);
             NuxeoDocumentContext documentContext;
-            documentContext = nuxeoController.getDocumentContext(path);
+            documentContext = nuxeoController.getDocumentContext(path,true);
 
             currentDoc = documentContext.getDoc();
             nuxeoController.setCurrentDoc(currentDoc);

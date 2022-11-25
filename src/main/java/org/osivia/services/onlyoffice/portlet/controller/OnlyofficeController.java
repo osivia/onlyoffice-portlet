@@ -97,6 +97,8 @@ public class OnlyofficeController extends CMSPortlet implements PortletContextAw
         }
 
         // LBI #1795 try to lock document if needed before edition
+        // LBI Le document ne doit plus être verrouillé. Paramètre obsolète
+        /*
         boolean withLock = Boolean.parseBoolean(window.getProperty("osivia.onlyoffice.withLock"));
         if(withLock) {
 
@@ -108,6 +110,8 @@ public class OnlyofficeController extends CMSPortlet implements PortletContextAw
                 onlyofficeService.lockTemporary(nuxeoController);
             }
         }
+
+         */
 
 
         return DEFAULT_VIEW;
