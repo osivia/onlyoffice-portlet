@@ -9,7 +9,7 @@
 	
 	<properties>
         <!-- Toutatice -->
-        <toutatice.version>4.7.18</toutatice.version>
+        <toutatice.version>4.7.51</toutatice.version>
 	</properties>
 	
 	<dependencies>
@@ -155,6 +155,26 @@
                 </plugins>
             </build>
         </profile>
+		<profile>
+            <id>forge-ci</id>       
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>            
+            <distributionManagement>
+                <repository>
+                    <id>${releaseRepoId}</id>
+                    <name>Internal releases repository</name>
+                    <!--suppress UnresolvedMavenProperty -->
+                    <url>${releaseRepoUrl}</url>
+                </repository>
+                <snapshotRepository>
+                    <id>${snapshotRepoId}</id>
+                    <name>Internal snapshots repository</name>
+                    <!--suppress UnresolvedMavenProperty -->
+                    <url>${snapshotRepoUrl}</url>
+                </snapshotRepository>
+            </distributionManagement>
+        </profile>        
     </profiles>
     
 </project>
